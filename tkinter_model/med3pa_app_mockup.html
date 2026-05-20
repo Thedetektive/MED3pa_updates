@@ -1,0 +1,263 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.app{display:flex;height:720px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;background:var(--color-background-primary)}
+.sidebar{width:220px;min-width:220px;background:var(--color-background-secondary);border-right:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;padding:0}
+.sidebar-header{padding:18px 16px 12px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.logo{font-size:15px;font-weight:500;color:var(--color-text-primary);display:flex;align-items:center;gap:8px}
+.logo-badge{background:#185FA5;color:#E6F1FB;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500}
+.nav{padding:12px 8px;flex:1}
+.nav-section{font-size:11px;color:var(--color-text-tertiary);padding:8px 8px 4px;text-transform:uppercase;letter-spacing:.06em}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--border-radius-md);cursor:pointer;font-size:14px;color:var(--color-text-secondary);margin-bottom:2px;transition:background .12s}
+.nav-item:hover{background:var(--color-background-primary)}
+.nav-item.active{background:var(--color-background-primary);color:var(--color-text-primary);font-weight:500}
+.nav-item i{font-size:16px;opacity:.7}
+.nav-item.active i{opacity:1;color:#185FA5}
+.sidebar-footer{padding:12px 8px;border-top:0.5px solid var(--color-border-tertiary)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:14px 20px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between}
+.page-title{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.page-sub{font-size:13px;color:var(--color-text-secondary);margin-top:1px}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--border-radius-md);font-size:13px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer;font-family:var(--font-sans)}
+.btn-primary{background:#185FA5;color:#E6F1FB;border-color:#185FA5}
+.content{flex:1;overflow-y:auto;padding:20px}
+.step-bar{display:flex;align-items:center;gap:0;margin-bottom:24px}
+.step{display:flex;align-items:center;gap:8px;font-size:13px}
+.step-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+.step-dot.done{background:#0F6E56;color:#E1F5EE}
+.step-dot.active{background:#185FA5;color:#E6F1FB}
+.step-dot.todo{background:var(--color-background-secondary);color:var(--color-text-tertiary);border:0.5px solid var(--color-border-tertiary)}
+.step-label{font-size:13px;color:var(--color-text-secondary)}
+.step-label.active{color:var(--color-text-primary);font-weight:500}
+.step-line{flex:1;height:1px;background:var(--color-border-tertiary);margin:0 8px}
+.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px}
+.card-label{font-size:12px;color:var(--color-text-secondary);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.card-value{font-size:22px;font-weight:500;color:var(--color-text-primary)}
+.card-delta{font-size:12px;margin-top:2px}
+.card-delta.up{color:#0F6E56}
+.card-delta.down{color:#993C1D}
+.section-title{font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.upload-zone{border:0.5px dashed var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:32px;text-align:center;background:var(--color-background-secondary);cursor:pointer;margin-bottom:20px}
+.upload-zone i{font-size:28px;color:var(--color-text-tertiary);display:block;margin-bottom:10px}
+.upload-zone p{font-size:14px;color:var(--color-text-secondary)}
+.upload-zone small{font-size:12px;color:var(--color-text-tertiary)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.conf-bar-wrap{margin-bottom:10px}
+.conf-bar-label{display:flex;justify-content:space-between;font-size:12px;color:var(--color-text-secondary);margin-bottom:4px}
+.conf-bar-track{height:8px;border-radius:4px;background:var(--color-background-secondary);overflow:hidden}
+.conf-bar-fill{height:100%;border-radius:4px}
+.profile-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px}
+.profile-row:last-child{border-bottom:none}
+.badge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:500}
+.badge-warn{background:#FAEEDA;color:#854F0B}
+.badge-ok{background:#EAF3DE;color:#3B6D11}
+.badge-err{background:#FAECE7;color:#993C1D}
+.mdr-area{position:relative;width:100%;height:160px;margin-top:8px}
+.threshold-block{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.threshold-label{font-size:13px;color:var(--color-text-secondary)}
+.threshold-val{font-size:15px;font-weight:500;color:#185FA5}
+.patient-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px}
+.patient-row:last-child{border-bottom:none}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--color-background-info,#B5D4F4);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#0C447C;flex-shrink:0}
+.conf-pill{height:20px;border-radius:10px;min-width:48px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500}
+.rec-pill{font-size:11px;padding:3px 9px;border-radius:10px;font-weight:500;margin-left:auto}
+</style>
+
+<div class="app">
+  <nav class="sidebar" role="navigation" aria-label="Application navigation">
+    <div class="sidebar-header">
+      <div class="logo">
+        <i class="ti ti-activity-heartbeat" aria-hidden="true" style="font-size:18px;color:#185FA5"></i>
+        MED3pa <span class="logo-badge">v1</span>
+      </div>
+    </div>
+    <div class="nav">
+      <div class="nav-section">Workspace</div>
+      <div class="nav-item"><i class="ti ti-layout-dashboard" aria-hidden="true"></i> Overview</div>
+      <div class="nav-section" style="margin-top:8px">Analysis</div>
+      <div class="nav-item active"><i class="ti ti-upload" aria-hidden="true"></i> Upload data</div>
+      <div class="nav-item"><i class="ti ti-gauge" aria-hidden="true"></i> Run MED3pa</div>
+      <div class="nav-item"><i class="ti ti-chart-line" aria-hidden="true"></i> MDR curves</div>
+      <div class="nav-item"><i class="ti ti-users-group" aria-hidden="true"></i> Patient profiles</div>
+      <div class="nav-section" style="margin-top:8px">Clinical use</div>
+      <div class="nav-item"><i class="ti ti-user-check" aria-hidden="true"></i> Patient lookup</div>
+      <div class="nav-item"><i class="ti ti-history" aria-hidden="true"></i> Session history</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="nav-item"><i class="ti ti-help-circle" aria-hidden="true"></i> Help & docs</div>
+      <div class="nav-item"><i class="ti ti-settings" aria-hidden="true"></i> Settings</div>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Analysis workspace</div>
+        <div class="page-sub">ICU in-hospital mortality · MIMIC-IV BaseModel</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn"><i class="ti ti-download" aria-hidden="true"></i> Export report</button>
+        <button class="btn btn-primary"><i class="ti ti-player-play" aria-hidden="true"></i> Run analysis</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <div class="step-bar" role="list" aria-label="Analysis steps">
+        <div class="step" role="listitem">
+          <div class="step-dot done"><i class="ti ti-check" style="font-size:12px" aria-hidden="true"></i></div>
+          <span class="step-label">Upload data</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" role="listitem">
+          <div class="step-dot done"><i class="ti ti-check" style="font-size:12px" aria-hidden="true"></i></div>
+          <span class="step-label">Configure model</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" role="listitem">
+          <div class="step-dot active">3</div>
+          <span class="step-label active">Review results</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" role="listitem">
+          <div class="step-dot todo">4</div>
+          <span class="step-label">Set threshold</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" role="listitem">
+          <div class="step-dot todo">5</div>
+          <span class="step-label">Deploy</span>
+        </div>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-label"><i class="ti ti-users" aria-hidden="true"></i> Patients analyzed</div>
+          <div class="card-value">4,476</div>
+          <div class="card-delta" style="color:var(--color-text-tertiary)">Evaluation set · MIMIC-IV</div>
+        </div>
+        <div class="card">
+          <div class="card-label"><i class="ti ti-shield-check" aria-hidden="true"></i> Confident predictions</div>
+          <div class="card-value">93%</div>
+          <div class="card-delta up"><i class="ti ti-arrow-up-right" style="font-size:11px" aria-hidden="true"></i> Suggested declaration rate</div>
+        </div>
+        <div class="card">
+          <div class="card-label"><i class="ti ti-chart-dots" aria-hidden="true"></i> AUC improvement</div>
+          <div class="card-value">+5.1%</div>
+          <div class="card-delta up"><i class="ti ti-arrow-up-right" style="font-size:11px" aria-hidden="true"></i> At DR = 93%</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card" style="padding:16px">
+          <div class="section-title"><i class="ti ti-chart-line" style="color:#185FA5;font-size:15px" aria-hidden="true"></i> Metrics by declaration rate</div>
+          <div class="mdr-area">
+            <canvas id="mdrChart" role="img" aria-label="MDR curve showing metrics improving as declaration rate decreases from 100% to 93%, then declining">MDR curves for sensitivity, AUC, specificity, and NPV.</canvas>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px">
+            <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:10px;height:3px;background:#378ADD;display:inline-block;border-radius:1px"></span>AUC</span>
+            <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:10px;height:3px;background:#1D9E75;display:inline-block;border-radius:1px"></span>Sensitivity</span>
+            <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:10px;height:3px;background:#BA7517;display:inline-block;border-radius:1px;border-top:1.5px dashed #BA7517;height:0"></span>Specificity</span>
+            <span style="font-size:11px;display:flex;align-items:center;gap:4px"><span style="width:10px;height:3px;background:#D85A30;display:inline-block;border-radius:1px;border-top:1.5px dashed #D85A30;height:0"></span>NPV</span>
+          </div>
+        </div>
+
+        <div class="card" style="padding:16px">
+          <div class="section-title"><i class="ti ti-sitemap" style="color:#185FA5;font-size:15px" aria-hidden="true"></i> Confidence by patient profile</div>
+          <div style="margin-top:4px">
+            <div class="conf-bar-wrap">
+              <div class="conf-bar-label"><span>BUN ≤ 25.5 mg/dL</span><span style="font-weight:500">0.84</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:84%;background:#1D9E75"></div></div>
+            </div>
+            <div class="conf-bar-wrap">
+              <div class="conf-bar-label"><span>GCS ≥ 10, Temp normal</span><span style="font-weight:500">0.79</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:79%;background:#378ADD"></div></div>
+            </div>
+            <div class="conf-bar-wrap">
+              <div class="conf-bar-label"><span>Age 40–65, no comorbidity</span><span style="font-weight:500">0.71</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:71%;background:#378ADD"></div></div>
+            </div>
+            <div class="conf-bar-wrap">
+              <div class="conf-bar-label"><span>BUN 25.5–30.8 mg/dL</span><span style="font-weight:500">0.52</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:52%;background:#EF9F27"></div></div>
+            </div>
+            <div class="conf-bar-wrap">
+              <div class="conf-bar-label"><span>GCS &lt; 7.5, Temp &gt; 38.1°C</span><span style="font-weight:500">0.31</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:31%;background:#D85A30"></div></div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:10px;border-top:0.5px solid var(--color-border-tertiary);font-size:12px;color:var(--color-text-secondary)">
+            <i class="ti ti-info-circle" style="font-size:13px" aria-hidden="true"></i> Profiles generated by APC decision tree · depth 3
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:16px;margin-bottom:16px">
+        <div class="section-title"><i class="ti ti-user-check" style="color:#185FA5;font-size:15px" aria-hidden="true"></i> Patient-level predictions</div>
+        <div style="display:grid;grid-template-columns:.6fr 1fr 1fr 1fr 1fr;gap:0;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary)">
+          <span style="font-size:11px;color:var(--color-text-tertiary)">Patient</span>
+          <span style="font-size:11px;color:var(--color-text-tertiary)">BaseModel pred.</span>
+          <span style="font-size:11px;color:var(--color-text-tertiary)">MPC confidence</span>
+          <span style="font-size:11px;color:var(--color-text-tertiary)">Profile</span>
+          <span style="font-size:11px;color:var(--color-text-tertiary);text-align:right">Recommendation</span>
+        </div>
+        <div style="display:grid;grid-template-columns:.6fr 1fr 1fr 1fr 1fr;gap:0;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px">
+          <div style="display:flex;align-items:center;gap:8px"><div class="avatar">P1</div><span style="color:var(--color-text-secondary)">Pt. 1</span></div>
+          <span style="color:#993C1D">Positive</span>
+          <span><span class="conf-pill" style="background:#FCEBEB;color:#A32D2D;width:52px">0.28</span></span>
+          <span style="color:var(--color-text-secondary);font-size:12px">BUN 25–31</span>
+          <div style="text-align:right"><span class="badge badge-err">Reject</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:.6fr 1fr 1fr 1fr 1fr;gap:0;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px">
+          <div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="background:#FAEEDA;color:#633806">P2</div><span style="color:var(--color-text-secondary)">Pt. 2</span></div>
+          <span style="color:#993C1D">Positive</span>
+          <span><span class="conf-pill" style="background:#FAEEDA;color:#854F0B;width:52px">0.55</span></span>
+          <span style="color:var(--color-text-secondary);font-size:12px">GCS &lt;7.5</span>
+          <div style="text-align:right"><span class="badge badge-warn">Caution</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:.6fr 1fr 1fr 1fr 1fr;gap:0;align-items:center;padding:8px 0;font-size:13px">
+          <div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="background:#EAF3DE;color:#27500A">P3</div><span style="color:var(--color-text-secondary)">Pt. 3</span></div>
+          <span style="color:#3B6D11">Negative</span>
+          <span><span class="conf-pill" style="background:#EAF3DE;color:#3B6D11;width:52px">0.91</span></span>
+          <span style="color:var(--color-text-secondary);font-size:12px">BUN ≤25.5</span>
+          <div style="text-align:right"><span class="badge badge-ok">Accept</span></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const dr = [100,97,95,93,90,85,80,75,70,60,50];
+const auc  = [0.76,0.77,0.78,0.80,0.79,0.78,0.76,0.74,0.71,0.65,0.60];
+const sens = [0.68,0.70,0.73,0.78,0.76,0.74,0.70,0.67,0.63,0.55,0.48];
+const spec = [0.74,0.75,0.75,0.76,0.78,0.82,0.86,0.89,0.92,0.96,0.98];
+const npv  = [0.85,0.86,0.87,0.89,0.90,0.92,0.93,0.94,0.95,0.97,0.98];
+
+new Chart(document.getElementById('mdrChart'),{
+  type:'line',
+  data:{
+    labels:dr.map(v=>v+'%'),
+    datasets:[
+      {label:'AUC',data:auc,borderColor:'#378ADD',borderWidth:2,pointRadius:2,tension:.4,fill:false},
+      {label:'Sensitivity',data:sens,borderColor:'#1D9E75',borderWidth:2,pointRadius:2,tension:.4,fill:false},
+      {label:'Specificity',data:spec,borderColor:'#BA7517',borderWidth:1.5,pointRadius:2,tension:.4,borderDash:[4,3],fill:false},
+      {label:'NPV',data:npv,borderColor:'#D85A30',borderWidth:1.5,pointRadius:2,tension:.4,borderDash:[4,3],fill:false}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{title:v=>'DR = '+v[0].label}}},
+    scales:{
+      x:{ticks:{font:{size:10},color:'#888780',maxRotation:0,autoSkip:true,maxTicksLimit:6},grid:{display:false}},
+      y:{min:.4,max:1.0,ticks:{font:{size:10},color:'#888780',callback:v=>v.toFixed(2)},grid:{color:'rgba(136,135,128,.15)'}}
+    },
+    annotation:{annotations:{line1:{type:'line',xMin:'93%',xMax:'93%',borderColor:'#185FA5',borderWidth:1.5,borderDash:[3,3]}}}
+  }
+});
+</script>
