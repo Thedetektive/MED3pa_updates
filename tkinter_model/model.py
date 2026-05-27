@@ -17,22 +17,15 @@ class MED3paApp(ctk.CTk):
         self.geometry("1150x800")
         self.configure(fg_color="#FFFFFF")
 
-        def on_closing(self):
-        # Gracefully kill all background Matplotlib figures so the terminal doesn't freeze
-            try:
-                plt.close('all')
-            except Exception:
-                pass
-                
-            self.quit()     # Stops the Tcl background mainloop safely
-            self.destroy()  # Deletes the widgets and frees up memory cleanly
-            
         # Configure Grid Layout for Main Window
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
         self.nav_buttons = {}
         self.frames = {}
+
+        # Handle graceful exit on window close
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # ----------------------------------------------------
         # SIDEBAR NAVIGATION
@@ -42,18 +35,22 @@ class MED3paApp(ctk.CTk):
         self.sidebar.grid_propagate(False)
 
         # Load the logo image
-        logo_image = ctk.CTkImage(
-            light_image=Image.open(r"C:\Users\thanh\Documents\Work\MEDomics\med3pa\tkinter_model\MEDomicsLabWithShadow700.png"),
-            dark_image=Image.open(r"C:\Users\thanh\Documents\Work\MEDomics\med3pa\tkinter_model\MEDomicsLabWithShadow700.png"),
-            size=(32, 32)  # Adjust size as needed
-        )
+        try:
+            logo_image = ctk.CTkImage(
+                light_image=Image.open(r"C:\Users\thanh\Documents\Work\MEDomics\med3pa\tkinter_model\MEDomicsLabWithShadow700.png"),
+                dark_image=Image.open(r"C:\Users\thanh\Documents\Work\MEDomics\med3pa\tkinter_model\MEDomicsLabWithShadow700.png"),
+                size=(32, 32)
+            )
+        except Exception:
+            logo_image = None
 
         # Header frame to hold image + text + badge side by side
         self.logo_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         self.logo_frame.pack(pady=(20, 20), padx=20, anchor="w")
 
-        self.logo_image_label = ctk.CTkLabel(self.logo_frame, image=logo_image, text="")
-        self.logo_image_label.pack(side="left", padx=(0, 6))
+        if logo_image:
+            self.logo_image_label = ctk.CTkLabel(self.logo_frame, image=logo_image, text="")
+            self.logo_image_label.pack(side="left", padx=(0, 6))
 
         self.logo_label = ctk.CTkLabel(self.logo_frame, text="MED3pa", font=ctk.CTkFont(family="Arial", size=16, weight="bold"), text_color="#185FA5")
         self.logo_label.pack(side="left")
@@ -67,11 +64,11 @@ class MED3paApp(ctk.CTk):
         
         self.create_nav_header("Analysis")
         self.create_nav_item("Upload data", target_frame="UploadView")
-        self.create_nav_item("Run MED3pa") # Decorative for now
         self.create_nav_item("MDR curves", target_frame="ResultsView")
         self.create_nav_item("Patient profiles", target_frame="ProfilesView")
         
         self.create_nav_header("Clinical Use")
+        self.create_nav_item("Run Model", target_frame="RunView")
         self.create_nav_item("Patient lookup", target_frame="LookupView")
         self.create_nav_item("Session history", target_frame="HistoryView")
 
@@ -86,11 +83,20 @@ class MED3paApp(ctk.CTk):
         self.frames["UploadView"] = UploadConfigurationView(parent=self, controller=self)
         self.frames["ResultsView"] = ResultsReviewView(parent=self, controller=self)
         self.frames["ProfilesView"] = ProfilesView(parent=self, controller=self)
+        self.frames["RunView"] = RunModelView(parent=self, controller=self)
         self.frames["LookupView"] = LookupView(parent=self, controller=self)
         self.frames["HistoryView"] = HistoryView(parent=self, controller=self)
 
         # Default to Overview
         self.show_frame("OverviewView")
+
+    def on_closing(self):
+        try:
+            plt.close('all')
+        except Exception:
+            pass
+        self.quit()
+        self.destroy()
 
     def create_nav_header(self, text):
         ctk.CTkLabel(self.sidebar, text=text.upper(), font=ctk.CTkFont(size=10, weight="bold"), text_color="#ADB5BD").pack(anchor="w", padx=15, pady=(12, 4))
@@ -114,11 +120,10 @@ class MED3paApp(ctk.CTk):
         active_frame = self.frames[page_name]
         active_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=0)
         
-        # Match the frame name back to the button text for highlighting
         frame_to_btn = {
             "OverviewView": "Overview", "UploadView": "Upload data", 
             "ResultsView": "MDR curves", "ProfilesView": "Patient profiles",
-            "LookupView": "Patient lookup", "HistoryView": "Session history"
+            "RunView": "Run Model", "LookupView": "Patient lookup", "HistoryView": "Session history"
         }
         active_btn_text = frame_to_btn.get(page_name)
         if active_btn_text in self.nav_buttons:
@@ -132,7 +137,6 @@ class OverviewView(ctk.CTkScrollableFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, fg_color="#FFFFFF", corner_radius=0)
         
-        # Top Bar
         top_bar = ctk.CTkFrame(self, fg_color="transparent", height=70)
         top_bar.pack(fill="x", pady=(15, 15))
         title_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
@@ -140,7 +144,6 @@ class OverviewView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(title_frame, text="Workspace Overview", font=ctk.CTkFont(size=18, weight="bold"), text_color="#212529").pack(anchor="w")
         ctk.CTkLabel(title_frame, text="System status and recent activity", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w")
 
-        # KPI Grid
         cards_frame = ctk.CTkFrame(self, fg_color="transparent")
         cards_frame.pack(fill="x", pady=(0, 20))
         cards_frame.grid_columnconfigure((0, 1, 2), weight=1, uniform="equal")
@@ -149,7 +152,6 @@ class OverviewView(ctk.CTkScrollableFrame):
         self.create_kpi(cards_frame, 1, "Total Patients Scanned", "12,845", "Last 30 days", "#6C757D")
         self.create_kpi(cards_frame, 2, "System Alerts", "0", "No active warnings", "#6C757D")
 
-        # Recent Activity Section
         activity_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         activity_card.pack(fill="x", pady=10)
         ctk.CTkLabel(activity_card, text="Recent Activity", font=ctk.CTkFont(size=14, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
@@ -175,7 +177,7 @@ class OverviewView(ctk.CTkScrollableFrame):
 
 
 # ====================================================================
-# TAB 2: UPLOAD & CONFIGURATION (Existing)
+# TAB 2: UPLOAD & CONFIGURATION
 # ====================================================================
 class UploadConfigurationView(ctk.CTkScrollableFrame):
     def __init__(self, parent, controller):
@@ -198,7 +200,6 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         grid_frame.grid_columnconfigure(0, weight=3, uniform="main_split")
         grid_frame.grid_columnconfigure(1, weight=2, uniform="main_split")
 
-        # LEFT SIDE
         left_col = ctk.CTkFrame(grid_frame, fg_color="transparent")
         left_col.grid(row=0, column=0, padx=(0, 10), sticky="nsew")
 
@@ -219,7 +220,6 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(model_card, text="Target Target Classification Label", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
         ctk.CTkComboBox(model_card, values=["In-Hospital Mortality Risk Factor", "30-Day Readmission Diagnostic Index", "Septic Shock Onset Threshold"], width=320, height=32).pack(anchor="w", padx=15, pady=(2, 15))
 
-        # RIGHT SIDE
         right_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         right_col.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
         ctk.CTkLabel(right_col, text="⚙️ Execution Parameters", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=12)
@@ -258,12 +258,38 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
 
 
 # ====================================================================
-# TAB 3: MDR CURVES / RESULTS (Existing + Fixes applied)
+# TAB 3: MDR CURVES / RESULTS
 # ====================================================================
 class ResultsReviewView(ctk.CTkScrollableFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, fg_color="#FFFFFF", corner_radius=0)
-        
+        self.metric_data = {
+            "AUC": {
+            "title": "AUC improvement",
+            "value": "+5.1%",
+            "subtext": "▲ At DR = 93%",
+            "optimal_dr": 93
+        },
+        "Sensitivity": {
+            "title": "Sensitivity improvement",
+            "value": "+4.3%",
+            "subtext": "▲ At DR = 85%",
+            "optimal_dr": 85
+        },
+        "Specificity": {
+            "title": "Specificity improvement",
+            "value": "+6.8%",
+            "subtext": "▲ At DR = 70%",
+            "optimal_dr": 70
+        },
+        "NPV": {
+            "title": "NPV improvement",
+            "value": "+3.9%",
+            "subtext": "▲ At DR = 75%",
+            "optimal_dr": 75
+        }
+
+    }
         top_bar = ctk.CTkFrame(self, fg_color="transparent", height=70)
         top_bar.pack(fill="x", pady=(15, 15))
         title_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
@@ -279,9 +305,24 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         cards_frame = ctk.CTkFrame(self, fg_color="transparent")
         cards_frame.pack(fill="x", pady=(0, 20))
         cards_frame.grid_columnconfigure((0, 1, 2), weight=1, uniform="equal")
+        # List of metrics we can rotate through on Card 2
+        self.available_metrics = ["AUC", "Sensitivity", "Specificity", "NPV"]
+        self.current_metric_index = 0
+
+        # Card 0: Static total count
         self.create_kpi(cards_frame, 0, "Patients analyzed", "4,476", "Evaluation set · MIMIC-IV", "#6C757D")
-        self.create_kpi(cards_frame, 1, "Confident predictions", "93%", "▲ Suggested declaration rate", "#0F6E56")
-        self.create_kpi(cards_frame, 2, "AUC improvement", "+5.1%", "▲ At DR = 93%", "#0F6E56")
+
+        # Card 1: Confident predictions (DR Card) - Save labels to update dynamically
+        self.dr_val_lbl, self.dr_sub_lbl, self.dr_title_lbl= self.create_kpi(
+            cards_frame, 1, "Confident predictions", "93%", "▲ Suggested declaration rate", "#0F6E56"
+        )
+
+        # Card 2: The Switchable Metric Card - Bind to rotation command
+        # self.metric_title_lbl = ctk.CTkLabel(cards_frame, text="AUC improvement") # Split out title logic if needed, or update dynamically
+        self.metric_val_lbl, self.metric_sub_lbl, self.metric_title_lbl = self.create_kpi(
+            cards_frame, 2, "AUC improvement", "+5.1%", "▲ At DR = 93%", "#0F6E56", 
+            command=self.cycle_metric
+        )
 
         split_frame = ctk.CTkFrame(self, fg_color="transparent")
         split_frame.pack(fill="x", pady=(0, 20))
@@ -330,14 +371,59 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             if idx < len(steps) - 1:
                 ctk.CTkFrame(sb_frame, height=1, fg_color="#E9ECEF", width=40).pack(side="left", fill="x", expand=True, padx=10)
 
-    def create_kpi(self, p, col, l, v, d, c):
-        card = ctk.CTkFrame(p, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8, height=100)
+    def create_kpi(self, parent, col, title, value, sub, sub_color, command=None):
+        card = ctk.CTkFrame(parent, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8, height=100)
         card.grid(row=0, column=col, padx=6, sticky="nsew")
         card.pack_propagate(False)
-        ctk.CTkLabel(card, text=l, font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=12, pady=(10, 2))
-        ctk.CTkLabel(card, text=v, font=ctk.CTkFont(size=24, weight="bold"), text_color="#212529").pack(anchor="w", padx=12)
-        ctk.CTkLabel(card, text=d, font=ctk.CTkFont(size=11), text_color=c).pack(anchor="w", padx=12, pady=(2, 8))
 
+        title_lbl = ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=12), text_color="#6C757D")
+        title_lbl.pack(anchor="w", padx=12, pady=(10, 2))
+        
+        val_lbl = ctk.CTkLabel(card, text=value, font=ctk.CTkFont(size=24, weight="bold"), text_color="#212529")
+        val_lbl.pack(anchor="w", padx=12)
+        
+        sub_lbl = ctk.CTkLabel(card, text=sub, font=ctk.CTkFont(size=11), text_color=sub_color)
+        sub_lbl.pack(anchor="w", padx=12, pady=(2, 8))
+        if command:
+            # Change cursor to hand to show clickability
+            card.configure(cursor="hand2")
+            # Bind the click action to the frame itself and all internal elements
+            for widget in (card, title_lbl, val_lbl, sub_lbl):
+                widget.bind("<Button-1>", lambda e: command())
+            
+    # Return references to the labels so we can change their text later
+        return val_lbl, sub_lbl, title_lbl
+    def cycle_metric(self):
+        # 1. Advance to the next metric index
+        self.current_metric_index = (self.current_metric_index + 1) % len(self.available_metrics)
+        next_metric_name = self.available_metrics[self.current_metric_index]
+        
+        # 2. Extract configuration from state map
+        config = self.metric_data[next_metric_name]
+        target_dr = config["optimal_dr"]
+        
+        # 3. Update the Switchable Card UI elements
+        self.metric_title_lbl.configure(text=config["title"])
+        self.metric_val_lbl.configure(text=config["value"])
+        self.metric_sub_lbl.configure(text=config["subtext"])
+        
+        # 4. Update the Dependent DR Card UI elements automatically
+        self.dr_val_lbl.configure(text=f"{target_dr}%")
+        self.dr_sub_lbl.configure(text=f"▲ Suggested DR for {next_metric_name}")
+        
+        # 5. Update the Matplotlib Dotted Line
+        self.update_chart_line(target_dr)
+    def update_chart_line(self, target_dr):
+        # Remove previous lines to avoid stacking duplicates
+        for line in list(self.ax_mdr.lines):
+            if line.get_linestyle() == ':': # targets the dotted indicator line
+                line.remove()
+        
+        # Draw new line using the string formatted match from your chart x-labels
+        self.ax_mdr.axvline(x=target_dr, color="#185FA5", linestyle=":", linewidth=1.5)
+        
+        # Force the canvas interface widget to re-render visually
+        self.canvas_mdr.draw()
     def create_profile_row(self, p, l, v, c):
         row = ctk.CTkFrame(p, fg_color="transparent")
         row.pack(fill="x", padx=15, pady=6)
@@ -360,31 +446,205 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(self.table_frame, text=rec, width=65, height=20, corner_radius=10, fg_color=bg, text_color=tc, font=ctk.CTkFont(size=11, weight="bold")).grid(row=r, column=4, sticky="e")
 
     def embed_mdr_chart(self, parent):
-        dr, auc, sens, spec, npv = [100, 97, 95, 93, 90, 85, 80, 75, 70, 60, 50], [0.76, 0.77, 0.78, 0.80, 0.79, 0.78, 0.76, 0.74, 0.71, 0.65, 0.60], [0.68, 0.70, 0.73, 0.78, 0.76, 0.74, 0.70, 0.67, 0.63, 0.55, 0.48], [0.74, 0.75, 0.75, 0.76, 0.78, 0.82, 0.86, 0.89, 0.92, 0.96, 0.98], [0.85, 0.86, 0.87, 0.89, 0.90, 0.92, 0.93, 0.94, 0.95, 0.97, 0.98]
-        fig, ax = plt.subplots(figsize=(4.5, 2.5), dpi=100)
-        fig.patch.set_facecolor('#FFFFFF')
-        ax.set_facecolor('#FFFFFF')
-        x_labels = [f"{v}%" for v in dr]
-        ax.plot(x_labels, auc, color='#378ADD', label='AUC', linewidth=2)
-        ax.plot(x_labels, sens, color='#1D9E75', label='Sensitivity', linewidth=2)
-        ax.plot(x_labels, spec, color='#BA7517', label='Specificity', linewidth=1.5, linestyle='--')
-        ax.plot(x_labels, npv, color='#D85A30', label='NPV', linewidth=1.5, linestyle='--')
-        ax.axvline(x="93%", color="#185FA5", linestyle=":", linewidth=1.5)
-        ax.set_ylim(0.4, 1.0)
-        ax.tick_params(axis='both', which='major', labelsize=8, colors='#888780')
-        ax.grid(True, color='#888780', alpha=0.15, linestyle='-')
-        for spine in ['top', 'right', 'left', 'bottom']: ax.spines[spine].set_visible(False)
-        ax.legend(loc='lower left', bbox_to_anchor=(0, -0.1), ncol=4, frameon=False, fontsize=7)
-        fig.tight_layout()
-        canvas = FigureCanvasTkAgg(fig, master=parent)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
-
+        # Keep arrays as pure numeric data
+        self.dr_vals = [50, 60, 70, 75, 80, 85, 90, 93, 95, 97, 100]
+        auc = [0.60, 0.65, 0.71, 0.74, 0.76, 0.78, 0.79, 0.80, 0.78, 0.77, 0.76]
+        sens = [0.48, 0.55, 0.63, 0.67, 0.70, 0.74, 0.76, 0.78, 0.73, 0.70, 0.68]
+        spec = [0.98, 0.96, 0.92, 0.89, 0.86, 0.82, 0.78, 0.76, 0.75, 0.75, 0.74]
+        npv = [0.98, 0.97, 0.95, 0.94, 0.93, 0.92, 0.90, 0.89, 0.87, 0.86, 0.85]
+        
+        # Bind figure and axes to self so they can be accessed anywhere in the class
+        self.fig_mdr, self.ax_mdr = plt.subplots(figsize=(4.5, 2.5), dpi=100)
+        self.fig_mdr.patch.set_facecolor('#FFFFFF')
+        self.ax_mdr.set_facecolor('#FFFFFF')
+        
+        # Plot using numeric data for X-axis instead of string array x_labels
+        self.ax_mdr.plot(self.dr_vals, auc, color='#378ADD', label='AUC', linewidth=2)
+        self.ax_mdr.plot(self.dr_vals, sens, color='#1D9E75', label='Sensitivity', linewidth=2)
+        self.ax_mdr.plot(self.dr_vals, spec, color='#BA7517', label='Specificity', linewidth=1.5, linestyle='--')
+        self.ax_mdr.plot(self.dr_vals, npv, color='#D85A30', label='NPV', linewidth=1.5, linestyle='--')
+        
+        # Place initial line using numeric value 93
+        self.ax_mdr.axvline(x=93, color="#185FA5", linestyle=":", linewidth=1.5)
+        
+        # Set explicitly numeric boundaries and labels
+        self.ax_mdr.set_xlim(50, 100)
+        self.ax_mdr.set_ylim(0.4, 1.0)
+        self.ax_mdr.set_xticks(self.dr_vals)
+        self.ax_mdr.set_xticklabels([f"{v}%" for v in self.dr_vals])
+        
+        self.ax_mdr.tick_params(axis='both', which='major', labelsize=8, colors='#888780')
+        self.ax_mdr.grid(True, color='#888780', alpha=0.15, linestyle='-')
+        
+        for spine in ['top', 'right', 'left', 'bottom']: 
+            self.ax_mdr.spines[spine].set_visible(False)
+            
+        self.ax_mdr.legend(loc='lower left', bbox_to_anchor=(0, -0.14), ncol=4, frameon=False, fontsize=7)
+        self.fig_mdr.tight_layout()
+        
+        # Save a reference to the canvas object wrapper as well
+        self.canvas_mdr = FigureCanvasTkAgg(self.fig_mdr, master=parent)
+        self.canvas_mdr.draw()
+        self.canvas_mdr.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
 
 # ====================================================================
-# TAB 4: PATIENT PROFILES
+# TAB 4: PATIENT PROFILES (Interactive Dashboard Mod)
 # ====================================================================
 class ProfilesView(ctk.CTkScrollableFrame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, fg_color="#FFFFFF", corner_radius=0)
+        
+        self.current_dr = 93.0  # Track initial slider state
+
+        top_bar = ctk.CTkFrame(self, fg_color="transparent", height=70)
+        top_bar.pack(fill="x", pady=(15, 15))
+        title_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
+        title_frame.pack(side="left", anchor="w")
+        ctk.CTkLabel(title_frame, text="Patient Profiles", font=ctk.CTkFont(size=18, weight="bold"), text_color="#212529").pack(anchor="w")
+        ctk.CTkLabel(title_frame, text="APC Decision Tree Subgroups & Live Thresholding", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w")
+        ctk.CTkButton(top_bar, text="▶ Save Threshold", fg_color="#185FA5", hover_color="#124A80", text_color="#FFFFFF", width=120, height=34).pack(side="right", padx=5)
+        
+        self.draw_step_bar()
+
+        # Dynamic Threshold Controller Card
+        slider_card = ctk.CTkFrame(self, fg_color="#F8F9FA", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        slider_card.pack(fill="x", pady=(0, 20))
+        
+        self.slider_label = ctk.CTkLabel(slider_card, text=f"🎯 Active Declaration Rate (DR) Threshold: {int(self.current_dr)}%", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5")
+        self.slider_label.pack(anchor="w", padx=15, pady=(10, 2))
+        
+        self.slider_dr = ctk.CTkSlider(slider_card, from_=50, to=100, number_of_steps=50, height=16, command=self.on_slider_move)
+        self.slider_dr.set(self.current_dr)
+        self.slider_dr.pack(fill="x", padx=15, pady=(2, 12))
+        
+        # Split layout container
+        split_frame = ctk.CTkFrame(self, fg_color="transparent")
+        split_frame.pack(fill="x", pady=(0, 20))
+        split_frame.grid_columnconfigure((0, 1), weight=1, uniform="equal")
+
+        chart_card = ctk.CTkFrame(split_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        chart_card.grid(row=0, column=0, padx=(0, 10), sticky="nsew")
+        ctk.CTkLabel(chart_card, text="📈 Dynamic Metrics Window", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
+        
+        # Init plots
+        self.fig_mdr, self.ax_mdr = plt.subplots(figsize=(4.5, 2.8), dpi=100)
+        self.canvas_mdr = FigureCanvasTkAgg(self.fig_mdr, master=chart_card)
+        self.canvas_mdr.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
+
+        tree_card = ctk.CTkFrame(split_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        tree_card.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
+        ctk.CTkLabel(tree_card, text="🌿 APC Hierarchical Decision Tree (Fades when DR drops)", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
+        
+        self.fig_tree, self.ax_tree = plt.subplots(figsize=(4.5, 2.8), dpi=100)
+        self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_card)
+        self.canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
+
+        # Initial Render
+        self.draw_mdr()
+        self.draw_tree()
+
+    def on_slider_move(self, value):
+        self.current_dr = float(value)
+        self.slider_label.configure(text=f"🎯 Active Declaration Rate (DR) Threshold: {int(self.current_dr)}%")
+        self.draw_mdr()
+        self.draw_tree()
+
+    def draw_mdr(self):
+        self.ax_mdr.clear()
+        self.fig_mdr.patch.set_facecolor('#FFFFFF')
+        self.ax_mdr.set_facecolor('#FFFFFF')
+        
+        dr_vals = [50, 60, 70, 75, 80, 85, 90, 93, 95, 97, 100]
+        auc = [0.60, 0.65, 0.71, 0.74, 0.76, 0.78, 0.79, 0.80, 0.78, 0.77, 0.76]
+        sens = [0.48, 0.55, 0.63, 0.67, 0.70, 0.74, 0.76, 0.78, 0.73, 0.70, 0.68]
+        spec = [0.98, 0.96, 0.92, 0.89, 0.86, 0.82, 0.78, 0.76, 0.75, 0.75, 0.74]
+        npv = [0.98, 0.97, 0.95, 0.94, 0.93, 0.92, 0.90, 0.89, 0.87, 0.86, 0.85]
+        
+        self.ax_mdr.plot(dr_vals, auc, color='#378ADD', label='AUC', linewidth=2)
+        self.ax_mdr.plot(dr_vals, sens, color='#1D9E75', label='Sensitivity', linewidth=2)
+        self.ax_mdr.plot(dr_vals, spec, color='#BA7517', label='Specificity', linewidth=1.5, linestyle='--')
+        self.ax_mdr.plot(dr_vals, npv, color='#D85A30', label='NPV', linewidth=1.5, linestyle='--')
+        
+        # Line location synced directly to slider coordinate state
+        self.ax_mdr.axvline(x=self.current_dr, color="#185FA5", linestyle=":", linewidth=2)
+        
+        self.ax_mdr.set_ylim(0.4, 1.0)
+        self.ax_mdr.set_xlim(50, 100)
+        self.ax_mdr.set_xticks(dr_vals)
+        self.ax_mdr.set_xticklabels([f"{v}%" for v in dr_vals])
+        self.ax_mdr.tick_params(axis='both', which='major', labelsize=8, colors='#888780')
+        self.ax_mdr.grid(True, color='#888780', alpha=0.15, linestyle='-')
+        for spine in ['top', 'right', 'left', 'bottom']: self.ax_mdr.spines[spine].set_visible(False)
+        self.ax_mdr.legend(loc='lower left', bbox_to_anchor=(0, -0.22), ncol=4, frameon=False, fontsize=7)
+        self.fig_mdr.tight_layout()
+        self.canvas_mdr.draw()
+
+    def draw_tree(self):
+        self.ax_tree.clear()
+        self.fig_tree.patch.set_facecolor('#FFFFFF')
+        self.ax_tree.set_facecolor('#FFFFFF')
+        self.ax_tree.axis('off')
+        self.ax_tree.set_xlim(0, 100)
+        self.ax_tree.set_ylim(0, 100)
+
+        # Base structure styles
+        box_root = dict(boxstyle="round,pad=0.4", facecolor="#F8F9FA", edgecolor="#185FA5", lw=1.5)
+        box_green = dict(boxstyle="round,pad=0.4", facecolor="#EAF3DE", edgecolor="#1D9E75", lw=1)
+        box_orange = dict(boxstyle="round,pad=0.4", facecolor="#FAECE7", edgecolor="#D85A30", lw=1)
+        arrow_style = dict(arrowstyle="->", color="#ADB5BD", lw=1.5)
+
+        # Dynamic visibility checkpoints configured against DR
+        show_node_a = self.current_dr >= 60.0
+        show_node_b1 = self.current_dr >= 78.0
+        show_node_b2 = self.current_dr >= 92.0
+
+        # Layer 1: Root Node (Always visible)
+        self.ax_tree.text(50, 88, f"All Cohorts\nDR = {int(self.current_dr)}%\nAUC: 0.80", ha='center', va='center', size=8, bbox=box_root)
+
+        # Layer 2: Node A
+        if show_node_a:
+            self.ax_tree.text(25, 54, "Node A\nBUN ≤ 25.5\nSize: 1,240 pts\nConf: High", ha='center', va='center', size=7, bbox=box_green)
+            self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
+            self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
+
+        # Layer 2: Node B (Always visible)
+        self.ax_tree.text(75, 54, "Node B\nBUN > 25.5\nSize: 3,236 pts\nConf: Evaluate", ha='center', va='center', size=7, bbox=box_root)
+        self.ax_tree.annotate("", xy=(75, 65), xytext=(55, 80), arrowprops=arrow_style)
+        self.ax_tree.text(64, 74, "False", size=7, color="#D85A30", weight="bold")
+
+        # Layer 3: Terminal Children from Node B
+        if show_node_b1:
+            self.ax_tree.text(60, 18, "Node B1\nGCS ≥ 10\nSize: 2,145 pts\nConf: Mod", ha='center', va='center', size=7, bbox=box_root)
+            self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
+
+        if show_node_b2:
+            self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_orange)
+            self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
+
+        self.fig_tree.tight_layout()
+        self.canvas_tree.draw()
+
+    def draw_step_bar(self):
+        sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
+        sb_frame.pack(fill="x", pady=(0, 20))
+        steps = [("✓", "Upload data", "done"), ("✓", "Configure model", "done"), ("✓", "Review results", "done"), ("4", "Set threshold", "active"), ("5", "Deploy", "todo")]
+        for idx, (num, name, state) in enumerate(steps):
+            sf = ctk.CTkFrame(sb_frame, fg_color="transparent")
+            sf.pack(side="left", fill="y")
+            dot_color = "#0F6E56" if state == "done" else ("#185FA5" if state == "active" else "#E9ECEF")
+            ctk.CTkLabel(sf, text=num, width=24, height=24, corner_radius=12, fg_color=dot_color, text_color="#FFFFFF" if state in ["done", "active"] else "#6C757D", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=(0, 6))
+            ctk.CTkLabel(sf, text=name, text_color="#212529" if state == "active" else "#6C757D", font=ctk.CTkFont(size=12, weight="bold" if state == "active" else "normal")).pack(side="left")
+            if idx < len(steps) - 1:
+                ctk.CTkFrame(sb_frame, height=1, fg_color="#E9ECEF", width=40).pack(side="left", fill="x", expand=True, padx=10)
+
+
+# ====================================================================
+# TAB 5: RUN MODEL LAYOUT (Mock Execution Space)
+# ====================================================================
+import customtkinter as ctk
+from tkinter import filedialog
+
+class RunModelView(ctk.CTkScrollableFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, fg_color="#FFFFFF", corner_radius=0)
         
@@ -392,33 +652,146 @@ class ProfilesView(ctk.CTkScrollableFrame):
         top_bar.pack(fill="x", pady=(15, 15))
         title_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
         title_frame.pack(side="left", anchor="w")
-        ctk.CTkLabel(title_frame, text="Patient Profiles", font=ctk.CTkFont(size=18, weight="bold"), text_color="#212529").pack(anchor="w")
-        ctk.CTkLabel(title_frame, text="APC Decision Tree Subgroups", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w")
+        ctk.CTkLabel(title_frame, text="Run Live Inference Pipeline", font=ctk.CTkFont(size=18, weight="bold"), text_color="#212529").pack(anchor="w")
+        ctk.CTkLabel(title_frame, text="Real-time validation tracking using BaseModel + MED3pa Confidence verification", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w")
 
-        grid = ctk.CTkFrame(self, fg_color="transparent")
-        grid.pack(fill="both", expand=True)
-        grid.grid_columnconfigure((0, 1), weight=1, uniform="equal")
+        grid_frame = ctk.CTkFrame(self, fg_color="transparent")
+        grid_frame.pack(fill="x", pady=(0, 20))
+        grid_frame.grid_columnconfigure(0, weight=2, uniform="run_split")
+        grid_frame.grid_columnconfigure(1, weight=3, uniform="run_split")
 
-        # Mock Profiles generated from decision tree logic
-        profiles = [
-            ("Profile Node A", "BUN ≤ 25.5 mg/dL", "1,240 pts", "High Confidence", "#1D9E75"),
-            ("Profile Node B", "GCS ≥ 10, Temp normal", "890 pts", "High Confidence", "#378ADD"),
-            ("Profile Node C", "Age 40–65, no comorbidity", "750 pts", "Moderate Confidence", "#378ADD"),
-            ("Profile Node D", "BUN 25.5–30.8 mg/dL", "420 pts", "Low Confidence", "#EF9F27"),
+        # LEFT SIDE: CONTROL CONTROLLER CARD
+        left_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        left_col.grid(row=0, column=0, padx=(0, 10), sticky="nsew")
+        
+        ctk.CTkLabel(left_col, text="⚡ Pipeline Configurations", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=12)
+        
+        ctk.CTkLabel(left_col, text="Select Base Model", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
+        ctk.CTkComboBox(left_col, values=[
+            "Breast Cancer Histopathology CNN Classifier",
+            "Lung Nodule Malignancy Prediction Model",
+            "Colorectal Cancer Risk Stratification Engine",
+            "Skin Lesion Melanoma Detection Network",
+            "Prostate Cancer Gleason Score Predictor",
+            "Multi-Omics Tumor Classification Model",
+            "Radiogenomic Cancer Detection Pipeline",
+            "Early Pancreatic Cancer Screening Predictor"
+        ], width=280, height=32).pack(anchor="w", padx=15, pady=(2, 12))
+        
+        ctk.CTkLabel(left_col, text="Deployment Validation Profile", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
+        ctk.CTkComboBox(left_col, values=["Base Logistics Ensemble [Threshold = 93%]", "Hippo-EHR Transformers [Threshold = 85%]"], width=280, height=32).pack(anchor="w", padx=15, pady=(2, 15))
+
+        c1 = ctk.CTkCheckBox(left_col, text="Inject real-time fallback route alerts", font=ctk.CTkFont(size=12))
+        c1.pack(anchor="w", padx=15, pady=6)
+        c1.select()
+        
+        c2 = ctk.CTkCheckBox(left_col, text="Log predictions to global lookup database", font=ctk.CTkFont(size=12))
+        c2.pack(anchor="w", padx=15, pady=6)
+        c2.select()
+
+        # ctk.CTkButton(left_col, text="▶ Initiate Inference Stream", fg_color="#0F6E56", hover_color="#0A4D3C", text_color="#FFFFFF", height=38, font=ctk.CTkFont(weight="bold")).pack(fill="x", padx=15, pady=(25, 15))
+
+        # RIGHT SIDE: STREAM PREVIEW MONITOR
+        right_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        right_col.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
+        
+        ctk.CTkLabel(right_col, text="📺 Active Inference Feed Preview", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
+        
+        table_frame = ctk.CTkFrame(right_col, fg_color="transparent")
+        table_frame.pack(fill="x", padx=15, pady=10)
+        table_frame.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="live_table")
+
+        headers = ["Patient ID", "Base Model Risk", "MED3pa Trust", "Routing Status"]
+        for idx, h in enumerate(headers):
+            ctk.CTkLabel(table_frame, text=h, font=ctk.CTkFont(size=11, weight="bold"), text_color="#6C757D").grid(row=0, column=idx, sticky="w" if idx < 3 else "e", pady=5)
+
+        self.add_mock_row(table_frame, 1, "PT-0841", "88% Positive", "0.94 (High)", "Accept Prediction", "#EAF3DE", "#3B6D11")
+        self.add_mock_row(table_frame, 2, "PT-1940", "64% Positive", "0.31 (Low)", "Flag for Human Audit", "#FAECE7", "#993C1D")
+        self.add_mock_row(table_frame, 3, "PT-3329", "12% Negative", "0.89 (High)", "Accept Prediction", "#EAF3DE", "#3B6D11")
+        self.add_mock_row(table_frame, 4, "PT-5511", "71% Positive", "0.55 (Mod)", "Caution / Flag", "#FAEEDA", "#854F0B")
+
+        # BOTTOM SECTION: PATIENT DATA INPUT
+        self.setup_data_input_section()
+
+    def add_mock_row(self, parent, r, pid, risk, trust, status, bg, tc):
+        ctk.CTkLabel(parent, text=pid, font=ctk.CTkFont(size=12, weight="bold"), text_color="#212529").grid(row=r, column=0, sticky="w", pady=6)
+        ctk.CTkLabel(parent, text=risk, font=ctk.CTkFont(size=12), text_color="#495057").grid(row=r, column=1, sticky="w", pady=6)
+        ctk.CTkLabel(parent, text=trust, font=ctk.CTkFont(size=12), text_color="#495057").grid(row=r, column=2, sticky="w", pady=6)
+        ctk.CTkLabel(parent, text=status, width=110, height=20, corner_radius=10, fg_color=bg, text_color=tc, font=ctk.CTkFont(size=10, weight="bold")).grid(row=r, column=3, sticky="e", pady=6)
+
+    def setup_data_input_section(self):
+        input_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        input_frame.pack(fill="x", pady=(0, 20))
+        
+        ctk.CTkLabel(input_frame, text="📝 Patient Data Input", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=(12, 5))
+        
+        # Tabs for Batch vs Single Input
+        self.tabs = ctk.CTkTabview(input_frame, fg_color="#F8F9FA", segmented_button_selected_color="#0F6E56", segmented_button_selected_hover_color="#0A4D3C", height=350)
+        self.tabs.pack(fill="x", padx=15, pady=(0, 15))
+        
+        self.tabs.add("Batch Processing (CSV)")
+        self.tabs.add("Single Patient (Manual Entry)")
+        
+        # --- BATCH TAB ---
+        batch_tab = self.tabs.tab("Batch Processing (CSV)")
+        ctk.CTkLabel(batch_tab, text="Select a CSV file containing structured patient data for batch model inference.", font=ctk.CTkFont(size=12), text_color="#495057").pack(anchor="w", padx=10, pady=(15, 10))
+        
+        csv_control_frame = ctk.CTkFrame(batch_tab, fg_color="transparent")
+        csv_control_frame.pack(fill="x", padx=10, pady=5)
+        
+        self.csv_path_var = ctk.StringVar(value="No file selected...")
+        ctk.CTkButton(csv_control_frame, text="📂 Browse CSV...", command=self.select_csv_file, width=140, fg_color="#495057", hover_color="#343A40").pack(side="left", padx=(0, 15))
+        ctk.CTkLabel(csv_control_frame, textvariable=self.csv_path_var, font=ctk.CTkFont(size=12, slant="italic"), text_color="#6C757D").pack(side="left")
+
+        ctk.CTkButton(batch_tab, text="Run Batch Inference", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=30)
+
+        # --- SINGLE PATIENT TAB ---
+        manual_tab = self.tabs.tab("Single Patient (Manual Entry)")
+        
+        fields = [
+            "stay_id", "hospitalid", "deceased", "age", "bicarbonate_min", "bicarbonate_max",
+            "bilirubin_min", "bilirubin_max", "potassium_min", "potassium_max", "sodium_min",
+            "sodium_max", "bun_min", "bun_max", "wbc_min", "wbc_max", "pao2fio2", "cpap",
+            "vent", "gcs_min", "hr_min", "hr_max", "tempc_min", "tempc_max", "sbp_min",
+            "sbp_max", "uo", "aids", "hem", "mets", "admissiontype"
         ]
 
-        for i, (title, crit, count, conf, color) in enumerate(profiles):
-            card = ctk.CTkFrame(grid, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
-            card.grid(row=i//2, column=i%2, padx=10, pady=10, sticky="nsew")
-            ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=14, weight="bold"), text_color="#212529").pack(anchor="w", padx=15, pady=(15, 5))
-            ctk.CTkLabel(card, text=f"Criteria: {crit}", font=ctk.CTkFont(size=12), text_color="#495057").pack(anchor="w", padx=15)
-            ctk.CTkLabel(card, text=f"Cohort size: {count}", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15, pady=(2, 10))
-            badge = ctk.CTkLabel(card, text=conf, fg_color=color, text_color="#FFFFFF", corner_radius=10, font=ctk.CTkFont(size=11, weight="bold"), height=22)
-            badge.pack(anchor="w", padx=15, pady=(0, 15))
+        grid_container = ctk.CTkFrame(manual_tab, fg_color="transparent")
+        grid_container.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Configure 5 equal columns for density
+        for i in range(5):
+            grid_container.grid_columnconfigure(i, weight=1, uniform="input_col")
 
+        self.patient_entries = {}
+        for idx, field in enumerate(fields):
+            row = (idx // 5) * 2
+            col = idx % 5
+            
+            # Format label string elegantly
+            lbl_text = field.replace("_", " ").title() + ":"
+            
+            ctk.CTkLabel(grid_container, text=lbl_text, font=ctk.CTkFont(size=11, weight="bold"), text_color="#495057").grid(row=row, column=col, sticky="w", padx=5, pady=(5, 0))
+            
+            ent = ctk.CTkEntry(grid_container, height=28)
+            ent.grid(row=row+1, column=col, sticky="ew", padx=5, pady=(0, 5))
+            self.patient_entries[field] = ent
+
+        btn_frame = ctk.CTkFrame(manual_tab, fg_color="transparent")
+        btn_frame.pack(fill="x", pady=15)
+        ctk.CTkButton(btn_frame, text="▶ Run Single Inference", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold")).pack(side="right", padx=10)
+        ctk.CTkButton(btn_frame, text="Clear Fields", fg_color="transparent", text_color="#D9534F", border_width=1, border_color="#D9534F", hover_color="#FDF2F2").pack(side="right", padx=10)
+
+    def select_csv_file(self):
+        filepath = filedialog.askopenfilename(
+            title="Select Patient Data CSV",
+            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+        )
+        if filepath:
+            self.csv_path_var.set(filepath)
 
 # ====================================================================
-# TAB 5: PATIENT LOOKUP
+# TAB 6: PATIENT LOOKUP
 # ====================================================================
 class LookupView(ctk.CTkScrollableFrame):
     def __init__(self, parent, controller):
@@ -431,14 +804,12 @@ class LookupView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(title_frame, text="Patient Lookup", font=ctk.CTkFont(size=18, weight="bold"), text_color="#212529").pack(anchor="w")
         ctk.CTkLabel(title_frame, text="Query individual clinical predictions", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w")
 
-        # Search Box
         search_frame = ctk.CTkFrame(self, fg_color="transparent")
         search_frame.pack(fill="x", pady=(0, 20))
         self.search_entry = ctk.CTkEntry(search_frame, placeholder_text="Enter Patient ID (e.g., PT-9482)", width=300, height=36)
         self.search_entry.pack(side="left", padx=(0, 10))
         ctk.CTkButton(search_frame, text="Search", fg_color="#185FA5", text_color="#FFFFFF", width=80, height=36).pack(side="left")
 
-        # Dummy Result Card
         result_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         result_card.pack(fill="x", pady=10)
         
@@ -463,7 +834,7 @@ class LookupView(ctk.CTkScrollableFrame):
 
 
 # ====================================================================
-# TAB 6: SESSION HISTORY
+# TAB 7: SESSION HISTORY
 # ====================================================================
 class HistoryView(ctk.CTkScrollableFrame):
     def __init__(self, parent, controller):
