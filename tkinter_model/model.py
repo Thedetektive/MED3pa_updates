@@ -590,6 +590,7 @@ class ProfilesView(ctk.CTkScrollableFrame):
         # Base structure styles
         box_root = dict(boxstyle="round,pad=0.4", facecolor="#F8F9FA", edgecolor="#185FA5", lw=1.5)
         box_green = dict(boxstyle="round,pad=0.4", facecolor="#EAF3DE", edgecolor="#1D9E75", lw=1)
+        box_grey = dict(boxstyle="round,pad=0.4", facecolor="#F2F4F4", edgecolor="#A9A9A9", lw=1, alpha=0.2)
         box_orange = dict(boxstyle="round,pad=0.4", facecolor="#FAECE7", edgecolor="#D85A30", lw=1)
         arrow_style = dict(arrowstyle="->", color="#ADB5BD", lw=1.5)
 
@@ -606,6 +607,10 @@ class ProfilesView(ctk.CTkScrollableFrame):
             self.ax_tree.text(25, 54, "Node A\nBUN ≤ 25.5\nSize: 1,240 pts\nConf: High", ha='center', va='center', size=7, bbox=box_green)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
             self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
+        else:
+            self.ax_tree.text(25, 54, "Node A\nBUN ≤ 25.5\nSize: 1,240 pts\nConf: High", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
+            self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
+            self.ax_tree.text(31, 74, "True", size=7, color="#A9A9A9", weight="bold", alpha=0.2)
 
         # Layer 2: Node B (Always visible)
         self.ax_tree.text(75, 54, "Node B\nBUN > 25.5\nSize: 3,236 pts\nConf: Evaluate", ha='center', va='center', size=7, bbox=box_root)
@@ -616,9 +621,15 @@ class ProfilesView(ctk.CTkScrollableFrame):
         if show_node_b1:
             self.ax_tree.text(60, 18, "Node B1\nGCS ≥ 10\nSize: 2,145 pts\nConf: Mod", ha='center', va='center', size=7, bbox=box_root)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
+        else:
+            self.ax_tree.text(60, 18, "Node B1\nGCS ≥ 10\nSize: 2,145 pts\nConf: Mod", ha='center', va='center', size=7, bbox=box_grey,alpha=.2)
+            self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
 
         if show_node_b2:
             self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_orange)
+            self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
+        else:
+            self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_grey,alpha=0.2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
 
         self.fig_tree.tight_layout()
