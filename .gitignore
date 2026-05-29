@@ -1,2 +1,5 @@
 testing/dataset.csv 
 study_3pa
+med3pa-env/
+venv/
+.env/
