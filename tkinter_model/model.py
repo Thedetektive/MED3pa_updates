@@ -539,7 +539,6 @@ class ProfilesView(ctk.CTkScrollableFrame):
         self.fig_tree, self.ax_tree = plt.subplots(figsize=(4.5, 2.8), dpi=100)
         self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_card)
         self.canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
-
         # Initial Render
         self.draw_mdr()
         self.draw_tree()
@@ -547,8 +546,13 @@ class ProfilesView(ctk.CTkScrollableFrame):
     def on_slider_move(self, value):
         self.current_dr = float(value)
         self.slider_label.configure(text=f"🎯 Active Declaration Rate (DR) Threshold: {int(self.current_dr)}%")
+        self.cbar.remove()
+        self.cbar = None
+        self.ax_tree.set_subplotspec(plt.GridSpec(1, 1)[0, 0])
+        self.ax_tree.set_position(self.ax_tree.get_subplotspec().get_position(self.fig_tree))
         self.draw_mdr()
         self.draw_tree()
+        
 
     def draw_mdr(self):
             self.ax_mdr.clear()
@@ -653,15 +657,14 @@ class ProfilesView(ctk.CTkScrollableFrame):
             self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_grey,alpha=0.2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
 
-     
         sm = plt.cm.ScalarMappable(cmap=cm.RdYlGn, norm=plt.Normalize(vmin=0, vmax=1))
         sm.set_array([])
 
-        cbar = plt.colorbar(sm, ax=self.ax_tree, shrink=0.6)
+        self.cbar = plt.colorbar(sm, ax=self.ax_tree, shrink=0.6)
 
-        cbar.set_label("APC Confidence", fontsize=8)
-        cbar.ax.tick_params(labelsize=7)
-        cbar.outline.set_edgecolor('#E9ECEF')
+        self.cbar.set_label("APC Confidence", fontsize=8)
+        self.cbar.ax.tick_params(labelsize=7)
+        self.cbar.outline.set_edgecolor('#E9ECEF')
 
         self.fig_tree.tight_layout()
         self.canvas_tree.draw()
