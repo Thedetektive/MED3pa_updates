@@ -4,6 +4,7 @@ from tkinter import filedialog
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 from PIL import Image
+import matplotlib.cm as cm
 
 # Set application styling
 ctk.set_appearance_mode("Light")
@@ -568,7 +569,6 @@ class ProfilesView(ctk.CTkScrollableFrame):
             # Line location synced directly to slider coordinate state
             self.ax_mdr.axvline(x=self.current_dr, color="#185FA5", linestyle=":", linewidth=2)
             
-            # === NEW: Disappearance Event Timeline Bar ===
             # Shift the bottom spine (x-axis) up to y=0.4 to create an empty area below
             self.ax_mdr.spines['bottom'].set_position(('data', 0.4))
             self.ax_mdr.set_ylim(0.20, 1.0) # Extend y-axis downwards to 0.20 for the bar
@@ -652,6 +652,16 @@ class ProfilesView(ctk.CTkScrollableFrame):
         else:
             self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_grey,alpha=0.2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
+
+     
+        sm = plt.cm.ScalarMappable(cmap=cm.RdYlGn, norm=plt.Normalize(vmin=0, vmax=1))
+        sm.set_array([])
+
+        cbar = plt.colorbar(sm, ax=self.ax_tree, shrink=0.6)
+
+        cbar.set_label("APC Confidence", fontsize=8)
+        cbar.ax.tick_params(labelsize=7)
+        cbar.outline.set_edgecolor('#E9ECEF')
 
         self.fig_tree.tight_layout()
         self.canvas_tree.draw()
