@@ -613,7 +613,7 @@ class ProfilesView(ctk.CTkScrollableFrame):
         self.ax_tree.set_ylim(0, 100)
 
         # Base structure styles
-        box_root = dict(boxstyle="round,pad=0.4", facecolor="#F8F9FA", edgecolor="#185FA5", lw=1.5)
+        box_root = dict(boxstyle="round,pad=0.4",facecolor="#F8F9FA",edgecolor="#FFD700",lw=1.5)
         box_green = dict(boxstyle="round,pad=0.4", facecolor="#EAF3DE", edgecolor="#1D9E75", lw=1)
         box_grey = dict(boxstyle="round,pad=0.4", facecolor="#F2F4F4", edgecolor="#A9A9A9", lw=1, alpha=0.2)
         box_orange = dict(boxstyle="round,pad=0.4", facecolor="#FAECE7", edgecolor="#D85A30", lw=1)
