@@ -550,34 +550,55 @@ class ProfilesView(ctk.CTkScrollableFrame):
         self.draw_tree()
 
     def draw_mdr(self):
-        self.ax_mdr.clear()
-        self.fig_mdr.patch.set_facecolor('#FFFFFF')
-        self.ax_mdr.set_facecolor('#FFFFFF')
-        
-        dr_vals = [50, 60, 70, 75, 80, 85, 90, 93, 95, 97, 100]
-        auc = [0.60, 0.65, 0.71, 0.74, 0.76, 0.78, 0.79, 0.80, 0.78, 0.77, 0.76]
-        sens = [0.48, 0.55, 0.63, 0.67, 0.70, 0.74, 0.76, 0.78, 0.73, 0.70, 0.68]
-        spec = [0.98, 0.96, 0.92, 0.89, 0.86, 0.82, 0.78, 0.76, 0.75, 0.75, 0.74]
-        npv = [0.98, 0.97, 0.95, 0.94, 0.93, 0.92, 0.90, 0.89, 0.87, 0.86, 0.85]
-        
-        self.ax_mdr.plot(dr_vals, auc, color='#378ADD', label='AUC', linewidth=2)
-        self.ax_mdr.plot(dr_vals, sens, color='#1D9E75', label='Sensitivity', linewidth=2)
-        self.ax_mdr.plot(dr_vals, spec, color='#BA7517', label='Specificity', linewidth=1.5, linestyle='--')
-        self.ax_mdr.plot(dr_vals, npv, color='#D85A30', label='NPV', linewidth=1.5, linestyle='--')
-        
-        # Line location synced directly to slider coordinate state
-        self.ax_mdr.axvline(x=self.current_dr, color="#185FA5", linestyle=":", linewidth=2)
-        
-        self.ax_mdr.set_ylim(0.4, 1.0)
-        self.ax_mdr.set_xlim(50, 100)
-        self.ax_mdr.set_xticks(dr_vals)
-        self.ax_mdr.set_xticklabels([f"{v}%" for v in dr_vals])
-        self.ax_mdr.tick_params(axis='both', which='major', labelsize=8, colors='#888780')
-        self.ax_mdr.grid(True, color='#888780', alpha=0.15, linestyle='-')
-        for spine in ['top', 'right', 'left', 'bottom']: self.ax_mdr.spines[spine].set_visible(False)
-        self.ax_mdr.legend(loc='lower left', bbox_to_anchor=(0, -0.22), ncol=4, frameon=False, fontsize=7)
-        self.fig_mdr.tight_layout()
-        self.canvas_mdr.draw()
+            self.ax_mdr.clear()
+            self.fig_mdr.patch.set_facecolor('#FFFFFF')
+            self.ax_mdr.set_facecolor('#FFFFFF')
+            
+            dr_vals = [50, 60, 70, 75, 80, 85, 90, 93, 95, 97, 100]
+            auc = [0.60, 0.65, 0.71, 0.74, 0.76, 0.78, 0.79, 0.80, 0.78, 0.77, 0.76]
+            sens = [0.48, 0.55, 0.63, 0.67, 0.70, 0.74, 0.76, 0.78, 0.73, 0.70, 0.68]
+            spec = [0.98, 0.96, 0.92, 0.89, 0.86, 0.82, 0.78, 0.76, 0.75, 0.75, 0.74]
+            npv = [0.98, 0.97, 0.95, 0.94, 0.93, 0.92, 0.90, 0.89, 0.87, 0.86, 0.85]
+            
+            self.ax_mdr.plot(dr_vals, auc, color='#378ADD', label='AUC', linewidth=2)
+            self.ax_mdr.plot(dr_vals, sens, color='#1D9E75', label='Sensitivity', linewidth=2)
+            self.ax_mdr.plot(dr_vals, spec, color='#BA7517', label='Specificity', linewidth=1.5, linestyle='--')
+            self.ax_mdr.plot(dr_vals, npv, color='#D85A30', label='NPV', linewidth=1.5, linestyle='--')
+            
+            # Line location synced directly to slider coordinate state
+            self.ax_mdr.axvline(x=self.current_dr, color="#185FA5", linestyle=":", linewidth=2)
+            
+            # === NEW: Disappearance Event Timeline Bar ===
+            # Shift the bottom spine (x-axis) up to y=0.4 to create an empty area below
+            self.ax_mdr.spines['bottom'].set_position(('data', 0.4))
+            self.ax_mdr.set_ylim(0.20, 1.0) # Extend y-axis downwards to 0.20 for the bar
+            self.ax_mdr.set_yticks([0.4, 0.6, 0.8, 1.0]) # Keep ticks only on the main chart
+            
+            # Draw the secondary timeline axis line
+            self.ax_mdr.hlines(y=0.30, xmin=50, xmax=100, color='#E9ECEF', linewidth=4, zorder=1)
+            
+            # Points where nodes drop (Node A, Node B1, Node B2)
+            drop_pts = [60, 78, 92]
+            drop_labels = ["Node A Fades", "Node B1 Fades", "Node B2 Fades"]
+            drop_colors = ['#1D9E75', '#185FA5', '#D85A30'] # Matches tree node colors
+            
+            # Plot timeline points and labels
+            self.ax_mdr.scatter(drop_pts, [0.30]*3, color=drop_colors, s=40, zorder=5)
+            for pt, label, color in zip(drop_pts, drop_labels, drop_colors):
+                self.ax_mdr.text(pt, 0.26, label, ha='center', va='top', fontsize=7, color=color, weight='bold')
+
+            self.ax_mdr.set_xlim(50, 100)
+            self.ax_mdr.set_xticks(dr_vals)
+            self.ax_mdr.set_xticklabels([f"{v}%" for v in dr_vals])
+            self.ax_mdr.tick_params(axis='both', which='major', labelsize=8, colors='#888780')
+            self.ax_mdr.grid(True, color='#888780', alpha=0.15, linestyle='-')
+            
+            for spine in ['top', 'right', 'left']: self.ax_mdr.spines[spine].set_visible(False)
+            
+            # Move the legend to the top so it doesn't overlap the new timeline bar
+            self.ax_mdr.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=4, frameon=False, fontsize=7)
+            self.fig_mdr.tight_layout()
+            self.canvas_mdr.draw()
 
     def draw_tree(self):
         self.ax_tree.clear()
