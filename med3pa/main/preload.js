@@ -1,6 +1,9 @@
-import { contextBridge, ipcRenderer } from 'electron'
+const { contextBridge, ipcRenderer } = require('electron')
 
 const handler = {
+  invoke(channel, ...args) {
+    return ipcRenderer.invoke(channel,...args);
+  },
   send(channel, value) {
     ipcRenderer.send(channel, value)
   },
@@ -12,6 +15,7 @@ const handler = {
       ipcRenderer.removeListener(channel, subscription)
     }
   },
+
 }
 
 contextBridge.exposeInMainWorld('ipc', handler)
