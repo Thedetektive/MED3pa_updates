@@ -605,8 +605,8 @@ class ProfilesView(ctk.CTkScrollableFrame):
             for spine in ['top', 'right', 'left']: self.ax_mdr.spines[spine].set_visible(False)
             
             # Move the legend to the top so it doesn't overlap the new timeline bar
-            self.ax_mdr.legend(loc='lower left', bbox_to_anchor=(0, 1.02), ncol=4, frameon=False, fontsize=7)
-            self.fig_mdr.tight_layout()
+            self.ax_mdr.legend(loc='lower left', bbox_to_anchor=(-.2, 1.02), ncol=4, frameon=False, fontsize=7)
+            # self.fig_mdr.tight_layout()
             self.canvas_mdr.draw()
 
     def draw_tree(self):
