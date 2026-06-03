@@ -223,11 +223,11 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
 
         right_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         right_col.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
-        ctk.CTkLabel(right_col, text="⚙️ Execution Parameters", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=12)
-        ctk.CTkLabel(right_col, text="APC Decision Tree Depth", font=ctk.CTkFont(size=12), text_color="#495057").pack(anchor="w", padx=15, pady=(5, 0))
-        slider_depth = ctk.CTkSlider(right_col, from_=1, to=10, number_of_steps=9, height=16)
-        slider_depth.set(3)
-        slider_depth.pack(fill="x", padx=15, pady=2)
+        self.depth_label = ctk.CTkLabel(right_col, text="APC Decision Tree Depth 3", font=ctk.CTkFont(size=12), text_color="#495057")
+        self.slider_depth = ctk.CTkSlider(right_col, from_=1, to=10, number_of_steps=9, height=16, command=lambda value: self.update_depth_label(value))
+        self.slider_depth.set(3)
+        self.depth_label.pack(anchor="w", padx=15, pady=(5, 0))
+        self.slider_depth.pack(fill="x", padx=15, pady=2)
         
         c1 = ctk.CTkCheckBox(right_col, text="Cross-validate internal cohorts (5-Fold Split)", font=ctk.CTkFont(size=12))
         c1.pack(anchor="w", padx=15, pady=8)
@@ -238,7 +238,8 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         ctk.CTkCheckBox(right_col, text="Generate SynthID verification Watermarks", font=ctk.CTkFont(size=12)).pack(anchor="w", padx=15, pady=8)
 
         ctk.CTkButton(right_col, text="⚡ Run Pipeline Execution", fg_color="#0F6E56", hover_color="#0A4D3C", text_color="#FFFFFF", height=40, font=ctk.CTkFont(weight="bold"), command=lambda: controller.show_frame("ResultsView")).pack(fill="x", padx=15, pady=(30, 15))
-
+    def update_depth_label(self,value):
+        self.depth_label.configure(text=f"APC Decision Tree Depth {int(value)}")
     def draw_step_bar(self):
         sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
         sb_frame.pack(fill="x", pady=(0, 20))
