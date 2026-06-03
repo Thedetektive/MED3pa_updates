@@ -38,8 +38,8 @@ class MED3paApp(ctk.CTk):
         # Load the logo image
         try:
             logo_image = ctk.CTkImage(
-                light_image=Image.open(r"C:\Users\thanh\Documents\Work\MEDomics\med3pa\tkinter_model\MEDomicsLabWithShadow700.png"),
-                dark_image=Image.open(r"C:\Users\thanh\Documents\Work\MEDomics\med3pa\tkinter_model\MEDomicsLabWithShadow700.png"),
+                light_image=Image.open(r"tkinter_model/MEDomicsLabWithShadow700.png"),
+                dark_image=Image.open(r"tkinter_model/MEDomicsLabWithShadow700.png"),
                 size=(32, 32)
             )
         except Exception:
@@ -547,7 +547,11 @@ class ProfilesView(ctk.CTkScrollableFrame):
     def on_slider_move(self, value):
         self.current_dr = float(value)
         self.slider_label.configure(text=f"🎯 Active Declaration Rate (DR) Threshold: {int(self.current_dr)}%")
-        self.cbar.remove()
+        if hasattr(self, 'cbar') and self.cbar is not None:
+            try:
+                self.cbar.remove()
+            except Exception:
+                pass
         self.cbar = None
         self.ax_tree.set_subplotspec(plt.GridSpec(1, 1)[0, 0])
         self.ax_tree.set_position(self.ax_tree.get_subplotspec().get_position(self.fig_tree))
