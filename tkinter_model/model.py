@@ -201,45 +201,239 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         grid_frame.grid_columnconfigure(0, weight=3, uniform="main_split")
         grid_frame.grid_columnconfigure(1, weight=2, uniform="main_split")
 
+        # ── LEFT COLUMN ──────────────────────────────────────────────
         left_col = ctk.CTkFrame(grid_frame, fg_color="transparent")
         left_col.grid(row=0, column=0, padx=(0, 10), sticky="nsew")
-
-        self.upload_zone = ctk.CTkFrame(left_col, fg_color="#F8F9FA", border_color="#CED4DA", border_width=1, corner_radius=8, height=180)
-        self.upload_zone.pack(fill="x", pady=(0, 15))
-        self.upload_zone.pack_propagate(False)
-        ctk.CTkLabel(self.upload_zone, text="📁", font=ctk.CTkFont(size=32)).pack(pady=(25, 2))
-        self.lbl_file_status = ctk.CTkLabel(self.upload_zone, text="Drag & drop cohort data here, or click to browse", font=ctk.CTkFont(size=13, weight="bold"), text_color="#495057")
-        self.lbl_file_status.pack()
-        ctk.CTkLabel(self.upload_zone, text="Supports CSV, PARQUET, or EHR extraction sheets (Max 50MB)", font=ctk.CTkFont(size=11), text_color="#6C757D").pack(pady=(2, 10))
-        self.upload_zone.bind("<Button-1>", lambda e: self.trigger_file_browser())
 
         model_card = ctk.CTkFrame(left_col, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         model_card.pack(fill="x")
         ctk.CTkLabel(model_card, text="🤖 Select Baseline Prediction Model", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=12)
         ctk.CTkLabel(model_card, text="Base Model Source Architecture", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
         ctk.CTkComboBox(model_card, values=["MIMIC-IV Base Logistics Ensemble", "Hippo-EHR Transformers v4", "Custom Local XGBoost Checkpoint"], width=320, height=32).pack(anchor="w", padx=15, pady=(2, 12))
-        ctk.CTkLabel(model_card, text="Target Target Classification Label", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
+        ctk.CTkLabel(model_card, text="Target Classification Label", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
         ctk.CTkComboBox(model_card, values=["In-Hospital Mortality Risk Factor", "30-Day Readmission Diagnostic Index", "Septic Shock Onset Threshold"], width=320, height=32).pack(anchor="w", padx=15, pady=(2, 15))
 
+        # ── RIGHT COLUMN — collapsible IPC / APC / MPC sections ──────
         right_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         right_col.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
-        self.depth_label = ctk.CTkLabel(right_col, text="APC Decision Tree Depth 3", font=ctk.CTkFont(size=12), text_color="#495057")
-        self.slider_depth = ctk.CTkSlider(right_col, from_=1, to=10, number_of_steps=9, height=16, command=lambda value: self.update_depth_label(value))
-        self.slider_depth.set(3)
-        self.depth_label.pack(anchor="w", padx=15, pady=(5, 0))
-        self.slider_depth.pack(fill="x", padx=15, pady=2)
-        
-        c1 = ctk.CTkCheckBox(right_col, text="Cross-validate internal cohorts (5-Fold Split)", font=ctk.CTkFont(size=12))
-        c1.pack(anchor="w", padx=15, pady=8)
-        c1.select()
-        c2 = ctk.CTkCheckBox(right_col, text="Impute missing baseline BUN & GCS parameters", font=ctk.CTkFont(size=12))
-        c2.pack(anchor="w", padx=15, pady=8)
-        c2.select()
-        ctk.CTkCheckBox(right_col, text="Generate SynthID verification Watermarks", font=ctk.CTkFont(size=12)).pack(anchor="w", padx=15, pady=8)
 
-        ctk.CTkButton(right_col, text="⚡ Run Pipeline Execution", fg_color="#0F6E56", hover_color="#0A4D3C", text_color="#FFFFFF", height=40, font=ctk.CTkFont(weight="bold"), command=lambda: controller.show_frame("ResultsView")).pack(fill="x", padx=15, pady=(30, 15))
-    def update_depth_label(self,value):
-        self.depth_label.configure(text=f"APC Decision Tree Depth {int(value)}")
+        ctk.CTkLabel(right_col, text="Confidence Method Configuration",
+                    font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5"
+                    ).pack(anchor="w", padx=15, pady=(12, 8))
+
+        self._build_ipc_section(right_col)
+        self._build_apc_section(right_col)
+        self._build_mpc_section(right_col)
+
+        ctk.CTkButton(
+            right_col, text="⚡ Run Pipeline Execution",
+            fg_color="#0F6E56", hover_color="#0A4D3C", text_color="#FFFFFF",
+            height=40, font=ctk.CTkFont(weight="bold"),
+            command=lambda: controller.show_frame("ResultsView")
+        ).pack(fill="x", padx=15, pady=(16, 15))
+
+    # ── Collapsible section helper ────────────────────────────────────
+    def _make_collapsible(self, parent, title, subtitle, accent):
+        """Returns (outer_frame, body_frame, toggle_state_dict).
+        Clicking the header toggles body_frame visibility."""
+        state = {"open": False}
+
+        outer = ctk.CTkFrame(parent, fg_color="#F8F9FA", border_color="#E9ECEF",
+                            border_width=1, corner_radius=6)
+        outer.pack(fill="x", padx=15, pady=(0, 8))
+
+        header = ctk.CTkFrame(outer, fg_color="transparent")
+        header.pack(fill="x", padx=10, pady=8)
+
+        indicator = ctk.CTkLabel(header, text="▶", font=ctk.CTkFont(size=11),
+                                text_color="#6C757D", width=14)
+        indicator.pack(side="left", padx=(0, 6))
+
+        title_block = ctk.CTkFrame(header, fg_color="transparent")
+        title_block.pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(title_block, text=title, font=ctk.CTkFont(size=12, weight="bold"),
+                    text_color=accent).pack(anchor="w")
+        ctk.CTkLabel(title_block, text=subtitle, font=ctk.CTkFont(size=10),
+                    text_color="#6C757D").pack(anchor="w")
+
+        body = ctk.CTkFrame(outer, fg_color="transparent")
+        # body is NOT packed yet — starts collapsed
+
+        def toggle(e=None):
+            if state["open"]:
+                body.pack_forget()
+                indicator.configure(text="▶")
+                state["open"] = False
+            else:
+                body.pack(fill="x", padx=10, pady=(0, 10))
+                indicator.configure(text="▼")
+                state["open"] = True
+
+        for widget in (header, indicator, title_block):
+            widget.bind("<Button-1>", toggle)
+        for child in title_block.winfo_children():
+            child.bind("<Button-1>", toggle)
+
+        return outer, body
+
+    # ── IPC section ───────────────────────────────────────────────────
+    def _build_ipc_section(self, parent):
+        _, body = self._make_collapsible(
+            parent,
+            "IPC — Individualized Predictive Confidence",
+            "Per-sample confidence estimation via algorithm hyperparameters",
+            "#185FA5"
+        )
+
+        # Algorithm hyperparameters
+        ctk.CTkLabel(body, text="Algorithm-Specific Hyperparameters",
+                    font=ctk.CTkFont(size=11, weight="bold"), text_color="#495057"
+                    ).pack(anchor="w", pady=(4, 2))
+
+        hp_grid = ctk.CTkFrame(body, fg_color="transparent")
+        hp_grid.pack(fill="x")
+        hp_grid.grid_columnconfigure((0, 1), weight=1, uniform="ipc_hp")
+
+        ctk.CTkLabel(hp_grid, text="n_estimators", font=ctk.CTkFont(size=11),
+                    text_color="#6C757D").grid(row=0, column=0, sticky="w", pady=(2, 0))
+        ctk.CTkEntry(hp_grid, placeholder_text="e.g. 100", height=28
+                    ).grid(row=1, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
+
+        ctk.CTkLabel(hp_grid, text="max_depth", font=ctk.CTkFont(size=11),
+                    text_color="#6C757D").grid(row=0, column=1, sticky="w", pady=(2, 0))
+        ctk.CTkEntry(hp_grid, placeholder_text="e.g. 5", height=28
+                    ).grid(row=1, column=1, sticky="ew", pady=(0, 6))
+
+        ctk.CTkLabel(hp_grid, text="min_samples_split", font=ctk.CTkFont(size=11),
+                    text_color="#6C757D").grid(row=2, column=0, sticky="w")
+        ctk.CTkEntry(hp_grid, placeholder_text="e.g. 2", height=28
+                    ).grid(row=3, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
+
+        # Confidence metric formulation
+        ctk.CTkLabel(body, text="Confidence Metric Formulation  (cᵢ)",
+                    font=ctk.CTkFont(size=11, weight="bold"), text_color="#495057"
+                    ).pack(anchor="w", pady=(6, 4))
+        ctk.CTkLabel(body,
+                    text="Choose how the per-sample target variable is defined.",
+                    font=ctk.CTkFont(size=10), text_color="#6C757D", wraplength=240
+                    ).pack(anchor="w", pady=(0, 4))
+
+        self.ipc_metric_var = ctk.StringVar(value="continuous")
+        ctk.CTkRadioButton(body, text="(1 − |ŷᵢ − yᵢ|)",
+                        font=ctk.CTkFont(size=11), variable=self.ipc_metric_var,
+                        value="continuous").pack(anchor="w", pady=(2, 4))
+        ctk.CTkRadioButton(body, text="Custom function",
+                        font=ctk.CTkFont(size=11), variable=self.ipc_metric_var,
+                        value="custom", command=self._toggle_ipc_custom
+                        ).pack(anchor="w", pady=(2, 4))
+
+        self.ipc_custom_frame = ctk.CTkFrame(body, fg_color="transparent")
+        ctk.CTkLabel(self.ipc_custom_frame, text="f(ŷᵢ, yᵢ) =",
+                    font=ctk.CTkFont(size=11), text_color="#6C757D"
+                    ).pack(anchor="w")
+        self.ipc_custom_entry = ctk.CTkEntry(
+            self.ipc_custom_frame,
+            placeholder_text="e.g.  (1 − |ŷᵢ − yᵢ|)",
+            height=30
+        )
+        self.ipc_custom_entry.pack(fill="x", pady=(2, 4))
+     
+
+    def _toggle_ipc_custom(self):
+        if self.ipc_metric_var.get() == "custom":
+            self.ipc_custom_frame.pack(fill="x", padx=0, pady=(0, 4))
+        else:
+            self.ipc_custom_frame.pack_forget()
+
+
+    # ── APC section ───────────────────────────────────────────────────
+    def _build_apc_section(self, parent):
+        _, body = self._make_collapsible(
+            parent,
+            "APC — Aggregate Predictive Confidence",
+            "Group-level confidence via decision tree complexity controls",
+            "#0F6E56"
+        )
+
+        # Tree depth slider
+        self.apc_depth_label = ctk.CTkLabel(body, text="Tree Depth  (max_depth)  —  3",
+                                            font=ctk.CTkFont(size=11, weight="bold"),
+                                            text_color="#495057")
+        self.apc_depth_label.pack(anchor="w", pady=(4, 0))
+        self.slider_depth = ctk.CTkSlider(
+            body, from_=1, to=10, number_of_steps=9, height=16,
+            command=lambda v: self.apc_depth_label.configure(
+                text=f"Tree Depth  (max_depth)  —  {int(v)}")
+        )
+        self.slider_depth.set(3)
+        self.slider_depth.pack(fill="x", pady=(2, 10))
+
+        # Complexity controls
+        ctk.CTkLabel(body, text="Complexity Control",
+                    font=ctk.CTkFont(size=11, weight="bold"), text_color="#495057"
+                    ).pack(anchor="w", pady=(2, 2))
+
+        cc_grid = ctk.CTkFrame(body, fg_color="transparent")
+        cc_grid.pack(fill="x")
+        cc_grid.grid_columnconfigure((0, 1), weight=1, uniform="apc_cc")
+
+        ctk.CTkLabel(cc_grid, text="min_samples_leaf", font=ctk.CTkFont(size=11),
+                    text_color="#6C757D").grid(row=0, column=0, sticky="w")
+        ctk.CTkEntry(cc_grid, placeholder_text="e.g. 5", height=28
+                    ).grid(row=1, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
+
+        ctk.CTkLabel(cc_grid, text="ccp_alpha", font=ctk.CTkFont(size=11),
+                    text_color="#6C757D").grid(row=0, column=1, sticky="w")
+        ctk.CTkEntry(cc_grid, placeholder_text="e.g. 0.01", height=28
+                    ).grid(row=1, column=1, sticky="ew", pady=(0, 6))
+
+    # ── MPC section ───────────────────────────────────────────────────
+    def _build_mpc_section(self, parent):
+        _, body = self._make_collapsible(
+            parent,
+            "MPC — Mixed Predictive Confidence",
+            "Combine IPC and APC scores into a single confidence signal",
+            "#6A3FA0"
+        )
+
+        ctk.CTkLabel(body, text="Combination Strategy",
+                    font=ctk.CTkFont(size=11, weight="bold"), text_color="#495057"
+                    ).pack(anchor="w", pady=(4, 4))
+
+        self.mpc_strategy_var = ctk.StringVar(value="average")
+
+        ctk.CTkRadioButton(body, text="Average  — mean(IPC, APC)",
+                        font=ctk.CTkFont(size=11), variable=self.mpc_strategy_var,
+                        value="average", command=self._toggle_mpc_custom
+                        ).pack(anchor="w", pady=2)
+        ctk.CTkRadioButton(body, text="Minimum  — min(IPC, APC)",
+                        font=ctk.CTkFont(size=11), variable=self.mpc_strategy_var,
+                        value="minimum", command=self._toggle_mpc_custom
+                        ).pack(anchor="w", pady=2)
+        ctk.CTkRadioButton(body, text="Custom function",
+                        font=ctk.CTkFont(size=11), variable=self.mpc_strategy_var,
+                        value="custom", command=self._toggle_mpc_custom
+                        ).pack(anchor="w", pady=(2, 4))
+
+        self.mpc_custom_frame = ctk.CTkFrame(body, fg_color="transparent")
+        ctk.CTkLabel(self.mpc_custom_frame, text="f(IPC, APC) =",
+                    font=ctk.CTkFont(size=11), text_color="#6C757D"
+                    ).pack(anchor="w")
+        self.mpc_custom_entry = ctk.CTkEntry(
+            self.mpc_custom_frame,
+            placeholder_text="e.g.  0.6 * IPC + 0.4 * APC",
+            height=30
+        )
+        self.mpc_custom_entry.pack(fill="x", pady=(2, 4))
+        # hidden by default (custom not selected)
+
+    def _toggle_mpc_custom(self):
+        if self.mpc_strategy_var.get() == "custom":
+            self.mpc_custom_frame.pack(fill="x", padx=0, pady=(0, 4))
+        else:
+            self.mpc_custom_frame.pack_forget()
+
+    # ── Step bar ──────────────────────────────────────────────────────
     def draw_step_bar(self):
         sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
         sb_frame.pack(fill="x", pady=(0, 20))
@@ -252,12 +446,6 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
             ctk.CTkLabel(sf, text=name, text_color="#212529" if state == "active" else "#6C757D", font=ctk.CTkFont(size=12, weight="bold" if state == "active" else "normal")).pack(side="left")
             if idx < len(steps) - 1:
                 ctk.CTkFrame(sb_frame, height=1, fg_color="#E9ECEF", width=40).pack(side="left", fill="x", expand=True, padx=10)
-
-    def trigger_file_browser(self):
-        path = filedialog.askopenfilename(filetypes=[("Data Matrices", "*.csv *.parquet *.xlsx")])
-        if path:
-            self.lbl_file_status.configure(text=f"Loaded: {path.split('/')[-1]}", text_color="#0F6E56")
-
 
 # ====================================================================
 # TAB 3: MDR CURVES / RESULTS

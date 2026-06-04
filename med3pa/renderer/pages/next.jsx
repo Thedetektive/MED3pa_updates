@@ -69,7 +69,7 @@ export default function PatientDataInput() {
 
       <div style={styles.header}>
         {/* <span style={styles.headerIcon}>📝</span> */}
-        <h2 style={styles.headerTitle}>Patient Data Input</h2>
+        <h2 style={styles.headerTitle}>Patient Data Input <Link href="/">Go to home page</Link></h2>
       </div>
 
 
