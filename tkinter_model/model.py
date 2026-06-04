@@ -1076,19 +1076,6 @@ class RunModelView(ctk.CTkScrollableFrame):
             "Early Pancreatic Cancer Screening Predictor"
         ], width=280, height=32).pack(anchor="w", padx=15, pady=(2, 12))
         
-        ctk.CTkLabel(left_col, text="Deployment Validation Profile", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
-        ctk.CTkComboBox(left_col, values=["Base Logistics Ensemble [Threshold = 93%]", "Hippo-EHR Transformers [Threshold = 85%]"], width=280, height=32).pack(anchor="w", padx=15, pady=(2, 15))
-
-        c1 = ctk.CTkCheckBox(left_col, text="Inject real-time fallback route alerts", font=ctk.CTkFont(size=12))
-        c1.pack(anchor="w", padx=15, pady=6)
-        c1.select()
-        
-        c2 = ctk.CTkCheckBox(left_col, text="Log predictions to global lookup database", font=ctk.CTkFont(size=12))
-        c2.pack(anchor="w", padx=15, pady=6)
-        c2.select()
-
-        # ctk.CTkButton(left_col, text="▶ Initiate Inference Stream", fg_color="#0F6E56", hover_color="#0A4D3C", text_color="#FFFFFF", height=38, font=ctk.CTkFont(weight="bold")).pack(fill="x", padx=15, pady=(25, 15))
-
         # RIGHT SIDE: STREAM PREVIEW MONITOR
         right_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         right_col.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
@@ -1141,7 +1128,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         ctk.CTkButton(csv_control_frame, text="📂 Browse CSV...", command=self.select_csv_file, width=140, fg_color="#495057", hover_color="#343A40").pack(side="left", padx=(0, 15))
         ctk.CTkLabel(csv_control_frame, textvariable=self.csv_path_var, font=ctk.CTkFont(size=12, slant="italic"), text_color="#6C757D").pack(side="left")
 
-        ctk.CTkButton(batch_tab, text="Run Batch Inference", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=30)
+        ctk.CTkButton(batch_tab, text="Run Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=30)
 
         # --- SINGLE PATIENT TAB ---
         manual_tab = self.tabs.tab("Single Patient (Manual Entry)")
@@ -1177,7 +1164,7 @@ class RunModelView(ctk.CTkScrollableFrame):
 
         btn_frame = ctk.CTkFrame(manual_tab, fg_color="transparent")
         btn_frame.pack(fill="x", pady=15)
-        ctk.CTkButton(btn_frame, text="▶ Run Single Inference", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold")).pack(side="right", padx=10)
+        ctk.CTkButton(btn_frame, text="▶ Run Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold")).pack(side="right", padx=10)
         ctk.CTkButton(btn_frame, text="Clear Fields", fg_color="transparent", text_color="#D9534F", border_width=1, border_color="#D9534F", hover_color="#FDF2F2").pack(side="right", padx=10)
 
     def select_csv_file(self):
