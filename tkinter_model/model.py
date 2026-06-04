@@ -687,11 +687,80 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             
         self.ax_mdr.legend(loc='lower left', bbox_to_anchor=(0, -0.14), ncol=4, frameon=False, fontsize=7)
         self.fig_mdr.tight_layout()
-        
-        # Save a reference to the canvas object wrapper as well
+        self._hover_annot = self.ax_mdr.annotate(
+            "", xy=(0, 0), xytext=(10, 10), textcoords="offset points",
+            bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="#CED4DA", lw=1),
+            fontsize=8, color="#212529",
+            arrowprops=dict(arrowstyle="-", color="#CED4DA", lw=0.8),
+            visible=False
+        )
+        # Crosshair dot that snaps to the nearest curve point
+        self._hover_dot, = self.ax_mdr.plot([], [], 'o', ms=5, zorder=5,
+                                             color='#185FA5', visible=False)
+
+        def _on_hover(event):
+            if event.inaxes != self.ax_mdr or event.xdata is None:
+                self._hover_annot.set_visible(False)
+                self._hover_dot.set_visible(False)
+                self.canvas_mdr.draw_idle()
+                return
+
+            import numpy as np
+            x_vals = np.array(self.dr_vals)
+            # Find the x-tick closest to the cursor
+            nearest_idx = int(np.argmin(np.abs(x_vals - event.xdata)))
+            nearest_x = x_vals[nearest_idx]
+
+            # Find whichever curve's y-value is closest to the cursor's y
+            best_name, best_y, best_color = None, None, None
+            best_dist = float('inf')
+            for name, (yvals, color) in self._curve_data.items():
+                dist = abs(yvals[nearest_idx] - event.ydata)
+                if dist < best_dist:
+                    best_dist, best_name, best_y, best_color = dist, name, yvals[nearest_idx], color
+
+            # Only show tooltip when cursor is reasonably close to a curve
+            y_range = self.ax_mdr.get_ylim()
+            threshold = (y_range[1] - y_range[0]) * 0.12
+            if best_dist > threshold:
+                self._hover_annot.set_visible(False)
+                self._hover_dot.set_visible(False)
+                self.canvas_mdr.draw_idle()
+                return
+
+            # Update dot
+            self._hover_dot.set_data([nearest_x], [best_y])
+            self._hover_dot.set_color(best_color)
+            self._hover_dot.set_visible(True)
+
+            # Update annotation text and position
+            self._hover_annot.set_text(f"{best_name}\nDR {nearest_x}%  →  {best_y:.2f}")
+            self._hover_annot.xy = (nearest_x, best_y)
+            self._hover_annot.get_bbox_patch().set_edgecolor(best_color)
+            # Flip text to the left when near the right edge
+            x_frac = (nearest_x - 50) / 50
+            self._hover_annot.set_position((-70, 10) if x_frac > 0.75 else (10, 10))
+            self._hover_annot.set_visible(True)
+            self.canvas_mdr.draw_idle()
+
         self.canvas_mdr = FigureCanvasTkAgg(self.fig_mdr, master=parent)
         self.canvas_mdr.draw()
         self.canvas_mdr.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
+        self._curve_data = {
+    "AUC":         (auc,  '#378ADD'),
+    "Sensitivity": (sens, '#1D9E75'),
+    "Specificity": (spec, '#BA7517'),
+    "NPV":         (npv,  '#D85A30'),
+}
+        self.fig_mdr.canvas.mpl_connect("motion_notify_event", _on_hover)
+
+        self.fig_mdr.canvas.mpl_connect(
+            "axes_leave_event",
+            lambda e: (self._hover_annot.set_visible(False),
+                       self._hover_dot.set_visible(False),
+                       self.canvas_mdr.draw_idle())
+        )
+
     def on_slider_move(self, value):
         self.current_dr = float(value)
         self.slider_label.configure(text=f"🎯 Active Declaration Rate (DR) Threshold: {int(self.current_dr)}%")
@@ -712,16 +781,16 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             self.fig_mdr.patch.set_facecolor('#FFFFFF')
             self.ax_mdr.set_facecolor('#FFFFFF')
             
-            dr_vals = [50, 60, 70, 75, 80, 85, 90, 93, 95, 97, 100]
+            self.dr_vals = [50, 60, 70, 75, 80, 85, 90, 93, 95, 97, 100]
             auc = [0.60, 0.65, 0.71, 0.74, 0.76, 0.78, 0.79, 0.80, 0.78, 0.77, 0.76]
             sens = [0.48, 0.55, 0.63, 0.67, 0.70, 0.74, 0.76, 0.78, 0.73, 0.70, 0.68]
             spec = [0.98, 0.96, 0.92, 0.89, 0.86, 0.82, 0.78, 0.76, 0.75, 0.75, 0.74]
             npv = [0.98, 0.97, 0.95, 0.94, 0.93, 0.92, 0.90, 0.89, 0.87, 0.86, 0.85]
             
-            self.ax_mdr.plot(dr_vals, auc, color='#378ADD', label='AUC', linewidth=2)
-            self.ax_mdr.plot(dr_vals, sens, color='#1D9E75', label='Sensitivity', linewidth=2)
-            self.ax_mdr.plot(dr_vals, spec, color='#BA7517', label='Specificity', linewidth=1.5, linestyle='--')
-            self.ax_mdr.plot(dr_vals, npv, color='#D85A30', label='NPV', linewidth=1.5, linestyle='--')
+            self.ax_mdr.plot(self.dr_vals, auc, color='#378ADD', label='AUC', linewidth=2)
+            self.ax_mdr.plot(self.dr_vals, sens, color='#1D9E75', label='Sensitivity', linewidth=2)
+            self.ax_mdr.plot(self.dr_vals, spec, color='#BA7517', label='Specificity', linewidth=1.5, linestyle='--')
+            self.ax_mdr.plot(self.dr_vals, npv, color='#D85A30', label='NPV', linewidth=1.5, linestyle='--')
             
             # Line location synced directly to slider coordinate state
             self.ax_mdr.axvline(x=self.current_dr, color="#185FA5", linestyle=":", linewidth=2)
@@ -745,8 +814,8 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
                 self.ax_mdr.text(pt, 0.26, label, ha='center', va='top', fontsize=7, color=color, weight='bold')
 
             self.ax_mdr.set_xlim(50, 100)
-            self.ax_mdr.set_xticks(dr_vals)
-            self.ax_mdr.set_xticklabels([f"{v}%" for v in dr_vals])
+            self.ax_mdr.set_xticks(self.dr_vals)
+            self.ax_mdr.set_xticklabels([f"{v}%" for v in self.dr_vals])
             self.ax_mdr.tick_params(axis='both', which='major', labelsize=8, colors='#888780')
             self.ax_mdr.grid(True, color='#888780', alpha=0.15, linestyle='-')
             
@@ -754,6 +823,34 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             
             # Move the legend to the top so it doesn't overlap the new timeline bar
             self.ax_mdr.legend(loc='lower left', bbox_to_anchor=(-.2, 1.02), ncol=4, frameon=False, fontsize=7)
+            self._hover_annot = self.ax_mdr.annotate(
+        "", xy=(0, 0), xytext=(10, 10), textcoords="offset points",
+        bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="#CED4DA", lw=1),
+        fontsize=8, color="#212529",
+        arrowprops=dict(arrowstyle="-", color="#CED4DA", lw=0.8),
+        visible=False
+    )
+            self._hover_dot, = self.ax_mdr.plot([], [], 'o', ms=5, zorder=5,
+                                                color='#185FA5', visible=False)
+
+            # Store curve data for the hover handler to reference
+            self._curve_data = {
+                "AUC":         ([0.60,0.65,0.71,0.74,0.76,0.78,0.79,0.80,0.78,0.77,0.76], '#378ADD'),
+                "Sensitivity": ([0.48,0.55,0.63,0.67,0.70,0.74,0.76,0.78,0.73,0.70,0.68], '#1D9E75'),
+                "Specificity": ([0.98,0.96,0.92,0.89,0.86,0.82,0.78,0.76,0.75,0.75,0.74], '#BA7517'),
+                "NPV":         ([0.98,0.97,0.95,0.94,0.93,0.92,0.90,0.89,0.87,0.86,0.85], '#D85A30'),
+            }
+
+            # Connect events only once
+            if not hasattr(self, '_hover_connected'):
+                self.fig_mdr.canvas.mpl_connect("motion_notify_event", self._on_hover)
+                self.fig_mdr.canvas.mpl_connect(
+                    "axes_leave_event",
+                    lambda e: (self._hover_annot.set_visible(False),
+                            self._hover_dot.set_visible(False),
+                            self.canvas_mdr.draw_idle())
+                )
+                self._hover_connected = True
             # self.fig_mdr.tight_layout()
             self.canvas_mdr.draw()
 
@@ -835,7 +932,44 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             if idx < len(steps) - 1:
                 ctk.CTkFrame(sb_frame, height=1, fg_color="#E9ECEF", width=40).pack(side="left", fill="x", expand=True, padx=10)
 
+    def _on_hover(self, event):
+        if event.inaxes != self.ax_mdr or event.xdata is None:
+            self._hover_annot.set_visible(False)
+            self._hover_dot.set_visible(False)
+            self.canvas_mdr.draw_idle()
+            return
 
+        import numpy as np
+        x_vals = np.array(self.dr_vals)
+        nearest_idx = int(np.argmin(np.abs(x_vals - event.xdata)))
+        nearest_x = x_vals[nearest_idx]
+
+        best_name, best_y, best_color = None, None, None
+        best_dist = float('inf')
+        for name, (yvals, color) in self._curve_data.items():
+            dist = abs(yvals[nearest_idx] - event.ydata)
+            if dist < best_dist:
+                best_dist, best_name, best_y, best_color = dist, name, yvals[nearest_idx], color
+
+        y_range = self.ax_mdr.get_ylim()
+        threshold = (y_range[1] - y_range[0]) * 0.12
+        if best_dist > threshold:
+            self._hover_annot.set_visible(False)
+            self._hover_dot.set_visible(False)
+            self.canvas_mdr.draw_idle()
+            return
+
+        self._hover_dot.set_data([nearest_x], [best_y])
+        self._hover_dot.set_color(best_color)
+        self._hover_dot.set_visible(True)
+
+        self._hover_annot.set_text(f"{best_name}\nDR {nearest_x}%  →  {best_y:.2f}")
+        self._hover_annot.xy = (nearest_x, best_y)
+        self._hover_annot.get_bbox_patch().set_edgecolor(best_color)
+        x_frac = (nearest_x - 50) / 50
+        self._hover_annot.set_position((-70, 10) if x_frac > 0.75 else (10, 10))
+        self._hover_annot.set_visible(True)
+        self.canvas_mdr.draw_idle()
 
 # ====================================================================
 # TAB 4: PATIENT PROFILES (Interactive Dashboard Mod)
@@ -1128,7 +1262,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         ctk.CTkButton(csv_control_frame, text="📂 Browse CSV...", command=self.select_csv_file, width=140, fg_color="#495057", hover_color="#343A40").pack(side="left", padx=(0, 15))
         ctk.CTkLabel(csv_control_frame, textvariable=self.csv_path_var, font=ctk.CTkFont(size=12, slant="italic"), text_color="#6C757D").pack(side="left")
 
-        ctk.CTkButton(batch_tab, text="Run Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=30)
+        ctk.CTkButton(batch_tab, text="▶ Run Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=30)
 
         # --- SINGLE PATIENT TAB ---
         manual_tab = self.tabs.tab("Single Patient (Manual Entry)")
