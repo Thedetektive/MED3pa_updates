@@ -1200,14 +1200,14 @@ class RunModelView(ctk.CTkScrollableFrame):
         
         ctk.CTkLabel(left_col, text="Select Base Model", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
         ctk.CTkComboBox(left_col, values=[
-            "Breast Cancer Histopathology CNN Classifier",
-            "Lung Nodule Malignancy Prediction Model",
-            "Colorectal Cancer Risk Stratification Engine",
-            "Skin Lesion Melanoma Detection Network",
-            "Prostate Cancer Gleason Score Predictor",
-            "Multi-Omics Tumor Classification Model",
-            "Radiogenomic Cancer Detection Pipeline",
-            "Early Pancreatic Cancer Screening Predictor"
+            "Breast Cancer Histopathology CNN Classifier (DR= 81%)",
+            "Lung Nodule Malignancy Prediction Model (DR= 73%)",
+            "Colorectal Cancer Risk Stratification Engine (DR= 86%)",
+            "Skin Lesion Melanoma Detection Network (DR= 69%)",
+            "Prostate Cancer Gleason Score Predictor (DR= 78%)",
+            "Multi-Omics Tumor Classification Model (DR= 65%)",
+            "Radiogenomic Cancer Detection Pipeline (DR= 84%)",
+            "Early Pancreatic Cancer Screening Predictor (DR= 71%)"
         ], width=280, height=32).pack(anchor="w", padx=15, pady=(2, 12))
         
         # RIGHT SIDE: STREAM PREVIEW MONITOR
