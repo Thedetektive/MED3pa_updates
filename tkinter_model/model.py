@@ -321,19 +321,19 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         self.ipc_metric_var = ctk.StringVar(value="continuous")
         ctk.CTkRadioButton(body, text="(1 − |ŷᵢ − yᵢ|)",
                         font=ctk.CTkFont(size=11), variable=self.ipc_metric_var,
-                        value="continuous").pack(anchor="w", pady=(2, 4))
+                        value="continuous",command=self._toggle_ipc_custom).pack(anchor="w", pady=(2, 4))
         ctk.CTkRadioButton(body, text="Custom function",
                         font=ctk.CTkFont(size=11), variable=self.ipc_metric_var,
                         value="custom", command=self._toggle_ipc_custom
                         ).pack(anchor="w", pady=(2, 4))
 
         self.ipc_custom_frame = ctk.CTkFrame(body, fg_color="transparent")
-        ctk.CTkLabel(self.ipc_custom_frame, text="f(ŷᵢ, yᵢ) =",
+        ctk.CTkLabel(self.ipc_custom_frame, text="f(p, y) =",
                     font=ctk.CTkFont(size=11), text_color="#6C757D"
                     ).pack(anchor="w")
         self.ipc_custom_entry = ctk.CTkEntry(
             self.ipc_custom_frame,
-            placeholder_text="e.g.  (1 − |ŷᵢ − yᵢ|)",
+            placeholder_text="e.g.  (1 − |p − y|)",
             height=30
         )
         self.ipc_custom_entry.pack(fill="x", pady=(2, 4))
@@ -879,7 +879,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
 
         # Layer 2: Node A
         if show_node_a:
-            self.ax_tree.text(25, 54, "Node A\nBUN ≤ 25.5\nSize: 1,240 pts\nConf: High", ha='center', va='center', size=7, bbox=box_green)
+            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: 1,240 pts\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=7, bbox=box_green)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
             self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
         else:
@@ -888,20 +888,20 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             self.ax_tree.text(31, 74, "True", size=7, color="#A9A9A9", weight="bold", alpha=0.2)
 
         # Layer 2: Node B (Always visible)
-        self.ax_tree.text(75, 54, "Node B\nBUN > 25.5\nSize: 3,236 pts\nConf: Evaluate", ha='center', va='center', size=7, bbox=box_root)
+        self.ax_tree.text(75, 54, f"Node B\nBUN > 25.5\nSize: 3,236 pts\n % left: {int((60 -(100-self.current_dr))/60*100)}", ha='center', va='center', size=7, bbox=box_root)
         self.ax_tree.annotate("", xy=(75, 65), xytext=(55, 80), arrowprops=arrow_style)
         self.ax_tree.text(64, 74, "False", size=7, color="#D85A30", weight="bold")
 
         # Layer 3: Terminal Children from Node B
         if show_node_b1:
-            self.ax_tree.text(60, 18, "Node B1\nGCS ≥ 10\nSize: 2,145 pts\nConf: Mod", ha='center', va='center', size=7, bbox=box_root)
+            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: 2,145 pts\n % left: {int((22 -(100-self.current_dr))/22*100)}", ha='center', va='center', size=7, bbox=box_root)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
         else:
             self.ax_tree.text(60, 18, "Node B1\nGCS ≥ 10\nSize: 2,145 pts\nConf: Mod", ha='center', va='center', size=7, bbox=box_grey,alpha=.2)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
 
         if show_node_b2:
-            self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_orange)
+            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: 1,091 pts\n % left: {int((8 -(100-self.current_dr))/8*100)}", ha='center', va='center', size=7, bbox=box_orange)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
         else:
             self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_grey,alpha=0.2)
