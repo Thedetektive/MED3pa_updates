@@ -481,6 +481,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
 
     }
         self.current_dr = 93.0  # Track initial slider state
+        self.highlighted_node = None  # Track which timeline dot was last clicked
         top_bar = ctk.CTkFrame(self, fg_color="transparent", height=70)
         top_bar.pack(fill="x", pady=(15, 15))
         title_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
@@ -850,9 +851,36 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
                             self._hover_dot.set_visible(False),
                             self.canvas_mdr.draw_idle())
                 )
+                self.fig_mdr.canvas.mpl_connect("button_press_event", self._on_dot_click)
                 self._hover_connected = True
             # self.fig_mdr.tight_layout()
             self.canvas_mdr.draw()
+
+    def _on_dot_click(self, event):
+        """Detect clicks near timeline dots and highlight the matching tree node."""
+        if hasattr(self, 'cbar') and self.cbar is not None:
+            try:
+                self.cbar.remove()
+            except Exception:
+                pass
+        self.cbar = None
+        self.ax_tree.set_subplotspec(plt.GridSpec(1, 1)[0, 0])
+        self.ax_tree.set_position(self.ax_tree.get_subplotspec().get_position(self.fig_tree))
+        if event.inaxes != self.ax_mdr or event.xdata is None:
+            return
+        drop_pts   = [60,       78,        92      ]
+        node_names = ["node_a", "node_b1", "node_b2"]
+        HIT_RADIUS_X = 2.5
+        HIT_RADIUS_Y = 0.04
+        for pt, node in zip(drop_pts, node_names):
+            if abs(event.xdata - pt) < HIT_RADIUS_X and abs(event.ydata - 0.30) < HIT_RADIUS_Y:
+                self.highlighted_node = None if self.highlighted_node == node else node
+                self.draw_tree()
+                return
+        # Clicked elsewhere on the axes — clear highlight
+        if self.highlighted_node is not None:
+            self.highlighted_node = None
+            self.draw_tree()
 
     def draw_tree(self):
         self.ax_tree.clear()
@@ -863,11 +891,21 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.ax_tree.set_ylim(0, 100)
 
         # Base structure styles
-        box_root = dict(boxstyle="round,pad=0.4",facecolor="#F8F9FA",edgecolor="#FFD700",lw=1.5)
-        box_green = dict(boxstyle="round,pad=0.4", facecolor="#EAF3DE", edgecolor="#1D9E75", lw=1)
-        box_grey = dict(boxstyle="round,pad=0.4", facecolor="#F2F4F4", edgecolor="#A9A9A9", lw=1, alpha=0.2)
+        box_root   = dict(boxstyle="round,pad=0.4", facecolor="#F8F9FA", edgecolor="#FFD700", lw=1.5)
+        box_green  = dict(boxstyle="round,pad=0.4", facecolor="#EAF3DE", edgecolor="#1D9E75", lw=1)
+        box_grey   = dict(boxstyle="round,pad=0.4", facecolor="#F2F4F4", edgecolor="#A9A9A9", lw=1, alpha=0.2)
         box_orange = dict(boxstyle="round,pad=0.4", facecolor="#FAECE7", edgecolor="#D85A30", lw=1)
         arrow_style = dict(arrowstyle="->", color="#ADB5BD", lw=1.5)
+
+        # Returns a bold highlighted version of any box style
+        def hl(base, glow_color):
+            h = dict(base)
+            h["lw"] = 3.0
+            h["edgecolor"] = glow_color
+            h.pop("alpha", None)  # remove fade if present
+            return h
+
+        hn = self.highlighted_node  # shorthand
 
         # Dynamic visibility checkpoints configured against DR
         show_node_a = self.current_dr >= 60.0
@@ -879,7 +917,9 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
 
         # Layer 2: Node A
         if show_node_a:
-            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: 1,240 pts\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=7, bbox=box_green)
+            style_a = hl(box_green, "#1D9E75") if hn == "node_a" else box_green
+            size_a  = 8 if hn == "node_a" else 7
+            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: 1,240 pts\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=size_a, bbox=style_a)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
             self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
         else:
@@ -894,17 +934,21 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
 
         # Layer 3: Terminal Children from Node B
         if show_node_b1:
-            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: 2,145 pts\n % left: {int((22 -(100-self.current_dr))/22*100)}", ha='center', va='center', size=7, bbox=box_root)
+            style_b1 = hl(box_root, "#185FA5") if hn == "node_b1" else box_root
+            size_b1  = 8 if hn == "node_b1" else 7
+            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: 2,145 pts\n % left: {int((22 -(100-self.current_dr))/22*100)}", ha='center', va='center', size=size_b1, bbox=style_b1)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
         else:
-            self.ax_tree.text(60, 18, "Node B1\nGCS ≥ 10\nSize: 2,145 pts\nConf: Mod", ha='center', va='center', size=7, bbox=box_grey,alpha=.2)
+            self.ax_tree.text(60, 18, "Node B1\nGCS ≥ 10\nSize: 2,145 pts\nConf: Mod", ha='center', va='center', size=7, bbox=box_grey, alpha=.2)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
 
         if show_node_b2:
-            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: 1,091 pts\n % left: {int((8 -(100-self.current_dr))/8*100)}", ha='center', va='center', size=7, bbox=box_orange)
+            style_b2 = hl(box_orange, "#D85A30") if hn == "node_b2" else box_orange
+            size_b2  = 8 if hn == "node_b2" else 7
+            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: 1,091 pts\n % left: {int((8 -(100-self.current_dr))/8*100)}", ha='center', va='center', size=size_b2, bbox=style_b2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
         else:
-            self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_grey,alpha=0.2)
+            self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
 
         sm = plt.cm.ScalarMappable(cmap=cm.RdYlGn, norm=plt.Normalize(vmin=0, vmax=1))
