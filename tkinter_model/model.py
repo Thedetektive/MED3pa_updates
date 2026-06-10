@@ -314,7 +314,7 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
                     font=ctk.CTkFont(size=11, weight="bold"), text_color="#495057"
                     ).pack(anchor="w", pady=(6, 4))
         ctk.CTkLabel(body,
-                    text="Choose how the per-sample target variable is defined.",
+                    text="Choose how the per-sample target variable is defined. (p=Predicted Probability, y=Actual Label)",
                     font=ctk.CTkFont(size=10), text_color="#6C757D", wraplength=240
                     ).pack(anchor="w", pady=(0, 4))
 
