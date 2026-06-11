@@ -499,6 +499,7 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
 class ResultsReviewView(ctk.CTkScrollableFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, fg_color="#FFFFFF", corner_radius=0)
+        self.controller = controller
         self.metric_data = {
             "AUC": {
             "title": "AUC improvement",
@@ -535,8 +536,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(title_frame, text="Analysis workspace", font=ctk.CTkFont(size=18, weight="bold"), text_color="#212529").pack(anchor="w")
         ctk.CTkLabel(title_frame, text="ICU in-hospital mortality · MIMIC-IV BaseModel", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w")
 
-        ctk.CTkButton(top_bar, text="▶ Run analysis", fg_color="#185FA5", hover_color="#124A80", text_color="#FFFFFF", width=120, height=34).pack(side="right", padx=5)
-        ctk.CTkButton(top_bar, text="⬇ Export report", fg_color="#FFFFFF", border_color="#CED4DA", border_width=1, text_color="#495057", hover_color="#F8F9FA", width=120, height=34).pack(side="right", padx=5)
+        ctk.CTkButton(top_bar, text="▶ Run analysis", fg_color="#185FA5", hover_color="#124A80", text_color="#FFFFFF", width=120, height=34, command=self.toggle_export_popup).pack(side="right", padx=5)
 
         self.draw_step_bar()
         session_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
@@ -611,6 +611,24 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.fig_tree, self.ax_tree = plt.subplots(figsize=(4.5, 2.8), dpi=100)
         self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_card)
         self.canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
+    def toggle_export_popup(self):
+        popup = ctk.CTkToplevel(self)
+        popup.title("Running Analysis")
+        popup.resizable(False, False)
+        popup.transient(self)
+        popup.grab_set()
+
+        ctk.CTkCheckBox(popup,text="Export Report").pack(padx=40, pady=(30, 15))
+        def close_button(popup):
+            popup.destroy()
+            self.controller.show_frame("RunView")
+        ctk.CTkButton(popup, text="Close", command=lambda : close_button(popup), width=120).pack(padx=40, pady=(30, 15))
+        popup.update_idletasks()
+        w, h = popup.winfo_reqwidth(), popup.winfo_reqheight()
+        x = self.winfo_x() + (self.winfo_width() // 2) - (w // 2)
+        y = self.winfo_y() + (self.winfo_height() // 2) - (h // 2)
+        popup.geometry(f"+{x}+{y}")
+
 
     def on_session_selected(self, value: str):
         if value.startswith("—"):          # placeholder selected
@@ -627,6 +645,14 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.viz_container.pack(fill="x")
 
         # Re-render charts with new session data
+        if hasattr(self, 'cbar') and self.cbar is not None:
+            try:
+                self.cbar.remove()
+            except Exception:
+                pass
+        self.cbar = None
+        self.ax_tree.set_subplotspec(plt.GridSpec(1, 1)[0, 0])
+        self.ax_tree.set_position(self.ax_tree.get_subplotspec().get_position(self.fig_tree))
         self.draw_mdr()
         self.draw_tree()
         # table_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
