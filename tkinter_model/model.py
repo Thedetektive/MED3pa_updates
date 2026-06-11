@@ -60,18 +60,14 @@ class MED3paApp(ctk.CTk):
         self.version_badge.pack(side="left", padx=(6, 0))
 
         # Nav Sections & Items mapped to their respective frames
-        self.create_nav_header("Workspace")
         self.create_nav_item("Overview", target_frame="OverviewView")
-        
-        self.create_nav_header("Analysis")
-        self.create_nav_item("Upload data", target_frame="UploadView")
-        self.create_nav_item("MDR curves", target_frame="ResultsView")
+        # self.create_nav_header("Med3pa1") maybe gon add sections for 1 and 2 (detectron)
+        self.create_nav_item("Configuration", target_frame="UploadView")
+        self.create_nav_item("Analysis Workspace", target_frame="ResultsView")
         # self.create_nav_item("Patient profiles", target_frame="ProfilesView")
-        
-        self.create_nav_header("Clinical Use")
-        self.create_nav_item("Run Model", target_frame="RunView")
-        self.create_nav_item("Patient lookup", target_frame="LookupView")
-        self.create_nav_item("Session history", target_frame="HistoryView")
+        self.create_nav_item("Deployment", target_frame="RunView")
+        # self.create_nav_item("Patient lookup", target_frame="LookupView")
+        # self.create_nav_item("Session history", target_frame="HistoryView")
 
         self.sidebar_footer = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         self.sidebar_footer.pack(side="bottom", fill="x", pady=15, padx=10)
@@ -1325,7 +1321,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         
         ctk.CTkLabel(left_col, text="⚡ Pipeline Configurations", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=12)
         
-        ctk.CTkLabel(left_col, text="Select Base Model", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
+        ctk.CTkLabel(left_col, text="Select Model", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
         ctk.CTkComboBox(left_col, values=[
             "Breast Cancer Histopathology CNN Classifier (DR= 81%)",
             "Lung Nodule Malignancy Prediction Model (DR= 73%)",
