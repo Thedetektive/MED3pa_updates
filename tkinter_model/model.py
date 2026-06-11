@@ -184,7 +184,7 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, fg_color="#FFFFFF", corner_radius=0)
         self.controller = controller
-
+        self.base_model_chosen = ctk.StringVar(value="default")
         top_bar = ctk.CTkFrame(self, fg_color="transparent", height=70)
         top_bar.pack(fill="x", pady=(15, 15))
         title_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
@@ -209,10 +209,11 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         model_card.pack(fill="x")
         ctk.CTkLabel(model_card, text="🤖 Select Baseline Prediction Model", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=12)
         ctk.CTkLabel(model_card, text="Base Model Source Architecture", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
-        ctk.CTkComboBox(model_card, values=["MIMIC-IV Base Logistics Ensemble", "Hippo-EHR Transformers v4", "Custom Local XGBoost Checkpoint"], width=320, height=32).pack(anchor="w", padx=15, pady=(2, 12))
-        ctk.CTkLabel(model_card, text="Target Classification Label", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
-        ctk.CTkComboBox(model_card, values=["In-Hospital Mortality Risk Factor", "30-Day Readmission Diagnostic Index", "Septic Shock Onset Threshold"], width=320, height=32).pack(anchor="w", padx=15, pady=(2, 15))
-
+        ctk.CTkComboBox(model_card, values=["MIMIC-IV Base Logistics Ensemble", "Hippo-EHR Transformers v4", "Custom Local XGBoost Checkpoint"], width=320, height=32, variable = self.base_model_chosen).pack(anchor="w", padx=15, pady=(2, 12))
+        ctk.CTkLabel(model_card, text="Training Data (.csv)", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
+        ctk.CTkComboBox(model_card, values=["In-Hospital Mortality Risk Data", "30-Day Readmission Diagnostic Index", "Septic Shock Onset Threshold"], width=320, height=32).pack(anchor="w", padx=15, pady=(2, 15))
+        ctk.CTkLabel(model_card, text="Session Name", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
+        ctk.CTkEntry(model_card).pack(fill="x", padx=15, pady=(2,15))
         # ── RIGHT COLUMN — collapsible IPC / APC / MPC sections ──────
         right_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         right_col.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
@@ -226,11 +227,60 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         self._build_mpc_section(right_col)
 
         ctk.CTkButton(
-            right_col, text="⚡ Run Pipeline Execution",
+            right_col, text="⚡ Run Analysis",
             fg_color="#0F6E56", hover_color="#0A4D3C", text_color="#FFFFFF",
             height=40, font=ctk.CTkFont(weight="bold"),
-            command=lambda: controller.show_frame("ResultsView")
+            command=self.runAnalysisPopup
         ).pack(fill="x", padx=15, pady=(16, 15))
+    def runAnalysisPopup(self):
+        popup = ctk.CTkToplevel(self)
+        popup.title("Running Analysis")
+        popup.geometry("400x220")
+        popup.resizable(False, False)
+        popup.transient(self)
+        popup.grab_set()
+
+        popup.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() // 2) - 200
+        y = self.winfo_y() + (self.winfo_height() // 2) - 110
+        popup.geometry(f"400x220+{x}+{y}")
+
+        ctk.CTkLabel(popup, text="Running Analysis", font=ctk.CTkFont(size=14, weight="bold"), text_color="#185FA5").pack(pady=(25, 4))
+        ctk.CTkLabel(popup, text=f"Model: {self.base_model_chosen.get()}", font=ctk.CTkFont(size=12), text_color="#6C757D").pack()
+
+        self.status_lbl = ctk.CTkLabel(popup, text="Initializing...", font=ctk.CTkFont(size=11), text_color="#6C757D")
+        self.status_lbl.pack(pady=(12, 4))
+
+        progress = ctk.CTkProgressBar(popup, width=320, height=14)
+        progress.set(0)
+        progress.pack(pady=(0, 20))
+
+        close_btn = ctk.CTkButton(popup, text="Close", command=popup.destroy, state="disabled", width=120)
+        close_btn.pack()
+
+        # Fake progress steps: (delay_ms, progress_value, label)
+        steps = [
+            (300,  0.10, "Loading dataset..."),
+            (600,  0.25, "Preprocessing features..."),
+            (500,  0.45, "Running base model inference..."),
+            (700,  0.65, "Computing uncertainty metrics..."),
+            (500,  0.80, "Aggregating MED3pa results..."),
+            (400,  0.95, "Finalizing report..."),
+            (300,  1.00, "✔ Analysis complete"),
+        ]
+
+        def run_step(i):
+            if i >= len(steps):
+                close_btn.configure(state="normal")
+                return
+            delay, value, label = steps[i]
+            popup.after(delay, lambda: (
+                progress.set(value),
+                self.status_lbl.configure(text=label),
+                run_step(i + 1)
+            ))
+
+        popup.after(100, lambda: run_step(0))
 
     # ── Collapsible section helper ────────────────────────────────────
     def _make_collapsible(self, parent, title, subtitle, accent):
@@ -437,7 +487,7 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
     def draw_step_bar(self):
         sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
         sb_frame.pack(fill="x", pady=(0, 20))
-        steps = [("1", "Upload data", "active"), ("2", "Configure model", "todo"), ("3", "Review results", "todo"), ("4", "Set threshold", "todo"), ("5", "Deploy", "todo")]
+        steps = [("1", "Configuration", "active"), ("2", "Analysis", "todo"), ("3", "Deploy", "todo")]
         for idx, (num, name, state) in enumerate(steps):
             sf = ctk.CTkFrame(sb_frame, fg_color="transparent")
             sf.pack(side="left", fill="y")
@@ -493,8 +543,26 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         ctk.CTkButton(top_bar, text="⬇ Export report", fg_color="#FFFFFF", border_color="#CED4DA", border_width=1, text_color="#495057", hover_color="#F8F9FA", width=120, height=34).pack(side="right", padx=5)
 
         self.draw_step_bar()
+        session_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        session_card.pack(fill="x", pady=(0, 20))
+        ctk.CTkLabel(session_card, text="📂 Session", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=(12, 2))
+        ctk.CTkLabel(session_card, text="Select a saved session to load its results", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
 
-        cards_frame = ctk.CTkFrame(self, fg_color="transparent")
+        session_row = ctk.CTkFrame(session_card, fg_color="transparent")
+        session_row.pack(fill="x", padx=15, pady=(4, 12))
+        self.session_var = ctk.StringVar(value="")
+        self.session_combo = ctk.CTkComboBox(
+            session_row,
+            values=["— select a session —", "Session A · 2025-06-01", "Session B · 2025-06-08"],
+            variable=self.session_var,
+            command=self.on_session_selected,
+            width=320, height=32
+        )
+        self.session_combo.pack(side="left")
+        ctk.CTkLabel(session_row, text="No session loaded", font=ctk.CTkFont(size=11), text_color="#6C757D").pack(side="left", padx=(12, 0))
+        self.session_status_lbl = session_row.winfo_children()[-1]  # keep a ref
+        self.viz_container = ctk.CTkFrame(self, fg_color="transparent")
+        cards_frame = ctk.CTkFrame(self.viz_container, fg_color="transparent")
         cards_frame.pack(fill="x", pady=(0, 20))
         cards_frame.grid_columnconfigure((0, 1, 2), weight=1, uniform="equal")
         # List of metrics we can rotate through on Card 2
@@ -516,7 +584,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             command=self.cycle_metric
         )
         # Dynamic Threshold Controller Card
-        slider_card = ctk.CTkFrame(self, fg_color="#F8F9FA", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        slider_card = ctk.CTkFrame(self.viz_container, fg_color="#F8F9FA", border_color="#E9ECEF", border_width=1, corner_radius=8)
         slider_card.pack(fill="x", pady=(0, 20))
         
         self.slider_label = ctk.CTkLabel(slider_card, text=f"🎯 Active Declaration Rate (DR) Threshold: {int(self.current_dr)}%", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5")
@@ -527,7 +595,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.slider_dr.pack(fill="x", padx=15, pady=(2, 12))
         
         # Split layout container
-        split_frame = ctk.CTkFrame(self, fg_color="transparent")
+        split_frame = ctk.CTkFrame(self.viz_container, fg_color="transparent")
         split_frame.pack(fill="x", pady=(0, 20))
         split_frame.grid_columnconfigure((0, 1), weight=1, uniform="equal")
 
@@ -547,23 +615,38 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.fig_tree, self.ax_tree = plt.subplots(figsize=(4.5, 2.8), dpi=100)
         self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_card)
         self.canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
-        # Initial Render
+
+    def on_session_selected(self, value: str):
+        if value.startswith("—"):          # placeholder selected
+            self.viz_container.pack_forget()
+            self.session_status_lbl.configure(text="No session loaded", text_color="#6C757D")
+            return
+
+        # Load data for the chosen session here
+        # e.g. self.load_session_data(value)
+
+        self.session_status_lbl.configure(text=f"✔ Loaded: {value}", text_color="#0F6E56")
+
+        # Show visualization (idempotent — safe to call even if already visible)
+        self.viz_container.pack(fill="x")
+
+        # Re-render charts with new session data
         self.draw_mdr()
         self.draw_tree()
-        table_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
-        table_card.pack(fill="x", pady=(0, 20))
-        ctk.CTkLabel(table_card, text="👤 Patient-level predictions", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
+        # table_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        # table_card.pack(fill="x", pady=(0, 20))
+        # ctk.CTkLabel(table_card, text="👤 Patient-level predictions", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
         
-        self.table_frame = ctk.CTkFrame(table_card, fg_color="transparent")
-        self.table_frame.pack(fill="x", padx=15, pady=(0, 15))
-        self.table_frame.grid_columnconfigure((0,1,2,3,4), weight=1, uniform="table")
+        # self.table_frame = ctk.CTkFrame(table_card, fg_color="transparent")
+        # self.table_frame.pack(fill="x", padx=15, pady=(0, 15))
+        # self.table_frame.grid_columnconfigure((0,1,2,3,4), weight=1, uniform="table")
 
-        for idx, header in enumerate(["Patient", "BaseModel pred.", "MPC confidence", "Profile", "Recommendation"]):
-            ctk.CTkLabel(self.table_frame, text=header, font=ctk.CTkFont(size=11, weight="bold"), text_color="#6C757D").grid(row=0, column=idx, sticky="w" if idx < 4 else "e", pady=5)
+        # for idx, header in enumerate(["Patient", "BaseModel pred.", "MPC confidence", "Profile", "Recommendation"]):
+        #     ctk.CTkLabel(self.table_frame, text=header, font=ctk.CTkFont(size=11, weight="bold"), text_color="#6C757D").grid(row=0, column=idx, sticky="w" if idx < 4 else "e", pady=5)
 
-        self.add_pt_row(1, "Pt. 1", "Positive", "0.28", "BUN 25–31", "Reject", "#FAECE7", "#993C1D")
-        self.add_pt_row(2, "Pt. 2", "Positive", "0.55", "GCS < 7.5", "Caution", "#FAEEDA", "#854F0B")
-        self.add_pt_row(3, "Pt. 3", "Negative", "0.91", "BUN ≤ 25.5", "Accept", "#EAF3DE", "#3B6D11")
+        # self.add_pt_row(1, "Pt. 1", "Positive", "0.28", "BUN 25–31", "Reject", "#FAECE7", "#993C1D")
+        # self.add_pt_row(2, "Pt. 2", "Positive", "0.55", "GCS < 7.5", "Caution", "#FAEEDA", "#854F0B")
+        # self.add_pt_row(3, "Pt. 3", "Negative", "0.91", "BUN ≤ 25.5", "Accept", "#EAF3DE", "#3B6D11")
 
     def draw_step_bar(self):
         sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
@@ -966,7 +1049,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
     def draw_step_bar(self):
         sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
         sb_frame.pack(fill="x", pady=(0, 20))
-        steps = [("✓", "Upload data", "done"), ("✓", "Configure model", "done"), ("✓", "Review results", "done"), ("4", "Set threshold", "active"), ("5", "Deploy", "todo")]
+        steps = [("1", "Configuration", "done"), ("2", "Analysis", "active"), ("3", "Deploy", "todo")]
         for idx, (num, name, state) in enumerate(steps):
             sf = ctk.CTkFrame(sb_frame, fg_color="transparent")
             sf.pack(side="left", fill="y")
@@ -1203,7 +1286,7 @@ class ProfilesView(ctk.CTkScrollableFrame):
     def draw_step_bar(self):
         sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
         sb_frame.pack(fill="x", pady=(0, 20))
-        steps = [("✓", "Upload data", "done"), ("✓", "Configure model", "done"), ("✓", "Review results", "done"), ("4", "Set threshold", "active"), ("5", "Deploy", "todo")]
+        steps = [("1", "Configuration", "done"), ("2", "Analysis", "done"), ("3", "Deploy", "active")]
         for idx, (num, name, state) in enumerate(steps):
             sf = ctk.CTkFrame(sb_frame, fg_color="transparent")
             sf.pack(side="left", fill="y")
@@ -1230,7 +1313,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         title_frame.pack(side="left", anchor="w")
         ctk.CTkLabel(title_frame, text="Run Live Inference Pipeline", font=ctk.CTkFont(size=18, weight="bold"), text_color="#212529").pack(anchor="w")
         ctk.CTkLabel(title_frame, text="Real-time validation tracking using BaseModel + MED3pa Confidence verification", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w")
-
+        self.draw_step_bar()
         grid_frame = ctk.CTkFrame(self, fg_color="transparent")
         grid_frame.pack(fill="x", pady=(0, 20))
         grid_frame.grid_columnconfigure(0, weight=2, uniform="run_split")
@@ -1275,6 +1358,18 @@ class RunModelView(ctk.CTkScrollableFrame):
 
         # BOTTOM SECTION: PATIENT DATA INPUT
         self.setup_data_input_section()
+    def draw_step_bar(self):
+        sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
+        sb_frame.pack(fill="x", pady=(0, 20))
+        steps = [("1", "Configuration", "done"), ("2", "Analysis", "done"), ("3", "Deploy", "active")]
+        for idx, (num, name, state) in enumerate(steps):
+            sf = ctk.CTkFrame(sb_frame, fg_color="transparent")
+            sf.pack(side="left", fill="y")
+            dot_color = "#0F6E56" if state == "done" else ("#185FA5" if state == "active" else "#E9ECEF")
+            ctk.CTkLabel(sf, text=num, width=24, height=24, corner_radius=12, fg_color=dot_color, text_color="#FFFFFF" if state in ["done", "active"] else "#6C757D", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=(0, 6))
+            ctk.CTkLabel(sf, text=name, text_color="#212529" if state == "active" else "#6C757D", font=ctk.CTkFont(size=12, weight="bold" if state == "active" else "normal")).pack(side="left")
+            if idx < len(steps) - 1:
+                ctk.CTkFrame(sb_frame, height=1, fg_color="#E9ECEF", width=40).pack(side="left", fill="x", expand=True, padx=10)
 
     def add_mock_row(self, parent, r, pid, risk, trust, status, bg, tc):
         ctk.CTkLabel(parent, text=pid, font=ctk.CTkFont(size=12, weight="bold"), text_color="#212529").grid(row=r, column=0, sticky="w", pady=6)
