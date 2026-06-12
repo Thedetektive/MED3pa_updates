@@ -573,13 +573,29 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             cards_frame, 1, "Confident predictions", "93%", "▲ Suggested declaration rate", "#0F6E56"
         )
 
-        # Card 2: The Switchable Metric Card - Bind to rotation command
-        # self.metric_title_lbl = ctk.CTkLabel(cards_frame, text="AUC improvement") # Split out title logic if needed, or update dynamically
-        self.metric_val_lbl, self.metric_sub_lbl, self.metric_title_lbl = self.create_kpi(
-            cards_frame, 2, "AUC improvement", "+5.1%", "▲ At DR = 93%", "#0F6E56", 
-            command=self.cycle_metric
+        metric_card = ctk.CTkFrame(cards_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8, height=100)
+        metric_card.grid(row=0, column=2, padx=6, sticky="nsew")
+        metric_card.pack_propagate(False)
+
+        self.metric_title_lbl = ctk.CTkLabel(metric_card, text="Metric at optimal DR", font=ctk.CTkFont(size=12), text_color="#6C757D")
+        self.metric_title_lbl.pack(anchor="w", padx=12, pady=(8, 2))
+
+        self.metric_combo = ctk.CTkComboBox(
+            metric_card,
+            values=self.available_metrics,
+            command=self.on_metric_selected,
+            width=160, height=26,
+            font=ctk.CTkFont(size=12)
         )
-        # Dynamic Threshold Controller Card
+        self.metric_combo.set("AUC")
+        self.metric_combo.pack(anchor="w", padx=12, pady=(0, 2))
+
+        self.metric_val_lbl = ctk.CTkLabel(metric_card, text="+5.1%", font=ctk.CTkFont(size=20, weight="bold"), text_color="#212529")
+        self.metric_val_lbl.pack(anchor="w", padx=12)
+
+        self.metric_sub_lbl = ctk.CTkLabel(metric_card, text="▲ At DR = 93%", font=ctk.CTkFont(size=11), text_color="#0F6E56")
+        self.metric_sub_lbl.pack(anchor="w", padx=12, pady=(0, 6))
+                # Dynamic Threshold Controller Card
         slider_card = ctk.CTkFrame(self.viz_container, fg_color="#F8F9FA", border_color="#E9ECEF", border_width=1, corner_radius=8)
         slider_card.pack(fill="x", pady=(0, 20))
         
@@ -589,28 +605,79 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.slider_dr = ctk.CTkSlider(slider_card, from_=50, to=100, number_of_steps=50, height=16, command=self.on_slider_move)
         self.slider_dr.set(self.current_dr)
         self.slider_dr.pack(fill="x", padx=15, pady=(2, 12))
-        
-        # Split layout container
         split_frame = ctk.CTkFrame(self.viz_container, fg_color="transparent")
         split_frame.pack(fill="x", pady=(0, 20))
-        split_frame.grid_columnconfigure((0, 1), weight=1, uniform="equal")
+        split_frame.grid_columnconfigure(0, weight=0)  
+        split_frame.grid_columnconfigure(1, weight=1)   
+        split_frame.grid_columnconfigure(2, weight=1)   
+        split_frame.grid_rowconfigure(0, weight=1)
+        check_panel = ctk.CTkFrame(split_frame, fg_color="#F8F9FA", border_color="#E9ECEF", border_width=1, corner_radius=8, width=130)
+        check_panel.grid(row=0, column=0, padx=(0, 8), sticky="nsew")
+        check_panel.pack_propagate(False)
+
+        ctk.CTkLabel(check_panel, text="Show metrics", font=ctk.CTkFont(size=11, weight="bold"), text_color="#495057").pack(anchor="w", padx=10, pady=(10, 6))
+
+        self._metric_visibility = {}   # metric_name → BooleanVar
+        _metric_colors = {
+            "AUC":         "#378ADD",
+            "Sensitivity": "#1D9E75",
+            "Specificity": "#BA7517",
+            "NPV":         "#D85A30",
+        }
+        for metric in self.available_metrics:
+            var = ctk.BooleanVar(value=True)
+            self._metric_visibility[metric] = var
+            row_f = ctk.CTkFrame(check_panel, fg_color="transparent")
+            row_f.pack(fill="x", padx=8, pady=2)
+            color_dot = ctk.CTkLabel(row_f, text="●", font=ctk.CTkFont(size=14), text_color=_metric_colors[metric], width=18)
+            color_dot.pack(side="left")
+            ctk.CTkCheckBox(
+                row_f,
+                text=metric,
+                variable=var,
+                font=ctk.CTkFont(size=11),
+                text_color="#212529",
+                checkbox_width=16,
+                checkbox_height=16,
+                command=self.draw_mdr
+            ).pack(side="left", padx=(2, 0))
+
 
         chart_card = ctk.CTkFrame(split_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
-        chart_card.grid(row=0, column=0, padx=(0, 10), sticky="nsew")
+        chart_card.grid(row=0, column=1, padx=(0, 8), sticky="nsew")
         ctk.CTkLabel(chart_card, text="📈 Dynamic Metrics Window", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
-        
-        # Init plots
+
         self.fig_mdr, self.ax_mdr = plt.subplots(figsize=(4.5, 2.8), dpi=100)
         self.canvas_mdr = FigureCanvasTkAgg(self.fig_mdr, master=chart_card)
         self.canvas_mdr.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
 
         tree_card = ctk.CTkFrame(split_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
-        tree_card.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
+        tree_card.grid(row=0, column=2, padx=(0, 0), sticky="nsew")
         ctk.CTkLabel(tree_card, text="🌿 APC Hierarchical Decision Tree (Fades when DR drops)", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
-        
+
         self.fig_tree, self.ax_tree = plt.subplots(figsize=(4.5, 2.8), dpi=100)
         self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_card)
         self.canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
+    def on_metric_selected(self, selected_metric: str):
+        config = self.metric_data[selected_metric]
+        target_dr = config["optimal_dr"]
+
+        # Update metric card labels
+        self.metric_title_lbl.configure(text=config["title"])
+        self.metric_val_lbl.configure(text=config["value"])
+        self.metric_sub_lbl.configure(text=config["subtext"])
+
+        # Update DR card to reflect the optimal DR for this metric
+        self.dr_val_lbl.configure(text=f"{target_dr}%")
+        self.dr_sub_lbl.configure(text=f"▲ Suggested DR for {selected_metric}")
+
+        # Sync slider position
+        self.current_dr = float(target_dr)
+        self.slider_dr.set(self.current_dr)
+        self.slider_label.configure(text=f"🎯 Active Declaration Rate (DR) Threshold: {target_dr}%")
+
+        # Update dotted line on chart
+        self.update_chart_line(target_dr)
     def toggle_export_popup(self):
         popup = ctk.CTkToplevel(self)
         popup.title("Running Analysis")
@@ -893,10 +960,15 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             spec = [0.98, 0.96, 0.92, 0.89, 0.86, 0.82, 0.78, 0.76, 0.75, 0.75, 0.74]
             npv = [0.98, 0.97, 0.95, 0.94, 0.93, 0.92, 0.90, 0.89, 0.87, 0.86, 0.85]
             
-            self.ax_mdr.plot(self.dr_vals, auc, color='#378ADD', label='AUC', linewidth=2)
-            self.ax_mdr.plot(self.dr_vals, sens, color='#1D9E75', label='Sensitivity', linewidth=2)
-            self.ax_mdr.plot(self.dr_vals, spec, color='#BA7517', label='Specificity', linewidth=1.5, linestyle='--')
-            self.ax_mdr.plot(self.dr_vals, npv, color='#D85A30', label='NPV', linewidth=1.5, linestyle='--')
+            _curve_specs = [
+                ("AUC",         auc,  '#378ADD', 2,   '-'),
+                ("Sensitivity", sens, '#1D9E75', 2,   '-'),
+                ("Specificity", spec, '#BA7517', 1.5, '--'),
+                ("NPV",         npv,  '#D85A30', 1.5, '--'),
+            ]
+            for name, yvals, color, lw, ls in _curve_specs:
+                if self._metric_visibility[name].get():
+                    self.ax_mdr.plot(self.dr_vals, yvals, color=color, label=name, linewidth=lw, linestyle=ls)
             
             # Line location synced directly to slider coordinate state
             self.ax_mdr.axvline(x=self.current_dr, color="#185FA5", linestyle=":", linewidth=2)
@@ -1322,8 +1394,6 @@ class ProfilesView(ctk.CTkScrollableFrame):
 # ====================================================================
 # TAB 5: RUN MODEL LAYOUT (Mock Execution Space)
 # ====================================================================
-import customtkinter as ctk
-from tkinter import filedialog
 
 class RunModelView(ctk.CTkScrollableFrame):
     def __init__(self, parent, controller):
@@ -1363,7 +1433,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         right_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         right_col.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
         
-        ctk.CTkLabel(right_col, text="📺 Active Inference Feed Preview", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
+        ctk.CTkLabel(right_col, text="Model Predictions", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
         
         table_frame = ctk.CTkFrame(right_col, fg_color="transparent")
         table_frame.pack(fill="x", padx=15, pady=10)
@@ -1378,6 +1448,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         self.add_mock_row(table_frame, 3, "PT-3329", "12% Negative", "0.89 (High)", "Accept Prediction", "#EAF3DE", "#3B6D11")
         self.add_mock_row(table_frame, 4, "PT-5511", "71% Positive", "0.55 (Mod)", "Caution / Flag", "#FAEEDA", "#854F0B")
 
+        ctk.CTkButton(right_col,text="Export to CSV").pack()
         # BOTTOM SECTION: PATIENT DATA INPUT
         self.setup_data_input_section()
     def draw_step_bar(self):
