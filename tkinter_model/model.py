@@ -5,7 +5,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 from PIL import Image
 import matplotlib.cm as cm
-
+import math
 # Set application styling
 ctk.set_appearance_mode("Light")
 ctk.set_default_color_theme("blue")
@@ -1112,16 +1112,16 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         if show_node_a:
             style_a = hl(box_green, "#1D9E75") if hn == "node_a" else box_green
             size_a  = 8 if hn == "node_a" else 7
-            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: 1,240 pts\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=size_a, bbox=style_a)
+            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: {round(1240/4476*100,2)} %\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=size_a, bbox=style_a)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
             self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
         else:
-            self.ax_tree.text(25, 54, "Node A\nBUN ≤ 25.5\nSize: 1,240 pts\nConf: High", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
+            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: {round(1240/4476*100,2)} %\nConf: High", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
             self.ax_tree.text(31, 74, "True", size=7, color="#A9A9A9", weight="bold", alpha=0.2)
 
         # Layer 2: Node B (Always visible)
-        self.ax_tree.text(75, 54, f"Node B\nBUN > 25.5\nSize: 3,236 pts\n % left: {int((60 -(100-self.current_dr))/60*100)}", ha='center', va='center', size=7, bbox=box_root)
+        self.ax_tree.text(75, 54, f"Node B\nBUN > 25.5\nSize: {round(3236/4476*100,2)} %\n % left: {int((60 -(100-self.current_dr))/60*100)}", ha='center', va='center', size=7, bbox=box_root)
         self.ax_tree.annotate("", xy=(75, 65), xytext=(55, 80), arrowprops=arrow_style)
         self.ax_tree.text(64, 74, "False", size=7, color="#D85A30", weight="bold")
 
@@ -1129,19 +1129,19 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         if show_node_b1:
             style_b1 = hl(box_root, "#185FA5") if hn == "node_b1" else box_root
             size_b1  = 8 if hn == "node_b1" else 7
-            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: 2,145 pts\n % left: {int((22 -(100-self.current_dr))/22*100)}", ha='center', va='center', size=size_b1, bbox=style_b1)
+            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: {round(2145/4476*100,2)} %\n % left: {int((22 -(100-self.current_dr))/22*100)}", ha='center', va='center', size=size_b1, bbox=style_b1)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
         else:
-            self.ax_tree.text(60, 18, "Node B1\nGCS ≥ 10\nSize: 2,145 pts\nConf: Mod", ha='center', va='center', size=7, bbox=box_grey, alpha=.2)
+            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: {round(2145/4476*100,2)} %\nConf: Mod", ha='center', va='center', size=7, bbox=box_grey, alpha=.2)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
 
         if show_node_b2:
             style_b2 = hl(box_orange, "#D85A30") if hn == "node_b2" else box_orange
             size_b2  = 8 if hn == "node_b2" else 7
-            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: 1,091 pts\n % left: {int((8 -(100-self.current_dr))/8*100)}", ha='center', va='center', size=size_b2, bbox=style_b2)
+            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: {round(1091/4476*100,2)} %\n % left: {int((8 -(100-self.current_dr))/8*100)}", ha='center', va='center', size=size_b2, bbox=style_b2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
         else:
-            self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
+            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: {round(1091/4476*100,2)} %\nConf: Low", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
 
         sm = plt.cm.ScalarMappable(cmap=cm.RdYlGn, norm=plt.Normalize(vmin=0, vmax=1))
