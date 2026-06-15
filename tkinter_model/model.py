@@ -187,9 +187,9 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         title_frame.pack(side="left", anchor="w")
         ctk.CTkLabel(title_frame, text="Analysis workspace", font=ctk.CTkFont(size=18, weight="bold"), text_color="#212529").pack(anchor="w")
         ctk.CTkLabel(title_frame, text="ICU in-hospital mortality · Configure Inputs", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w")
-
+        self.session_name = ctk.StringVar()
+        self.session_name.trace_add("write", self._on_session_name_change)
         ctk.CTkButton(top_bar, text="Next step  →", fg_color="#185FA5", hover_color="#124A80", text_color="#FFFFFF", width=120, height=34, command=lambda: controller.show_frame("ResultsView")).pack(side="right", padx=5)
-
         self.draw_step_bar()
 
         grid_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -209,7 +209,8 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(model_card, text="Training Data (.csv)", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
         ctk.CTkComboBox(model_card, values=["In-Hospital Mortality Risk Data", "30-Day Readmission Diagnostic Index", "Septic Shock Onset Threshold"], width=320, height=32).pack(anchor="w", padx=15, pady=(2, 15))
         ctk.CTkLabel(model_card, text="Session Name", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
-        ctk.CTkEntry(model_card).pack(fill="x", padx=15, pady=(2,15))
+        session_entry = ctk.CTkEntry(model_card, textvariable=self.session_name)
+        session_entry.pack(fill="x", padx=15, pady=(2, 15))
         # ── RIGHT COLUMN — collapsible IPC / APC / MPC sections ──────
         right_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         right_col.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
@@ -222,12 +223,26 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         self._build_apc_section(right_col)
         self._build_mpc_section(right_col)
 
-        ctk.CTkButton(
+        self.run_analalysis_button = ctk.CTkButton(
             right_col, text="⚡ Run Analysis",
-            fg_color="#0F6E56", hover_color="#0A4D3C", text_color="#FFFFFF",
-            height=40, font=ctk.CTkFont(weight="bold"),
+            fg_color="#8DB5AC", hover_color="#8DB5AC", text_color="#FFFFFF",
+            height=40, font=ctk.CTkFont(weight="bold"), state="disabled",
             command=self.runAnalysisPopup
-        ).pack(fill="x", padx=15, pady=(16, 15))
+        )
+        self.run_analalysis_button.pack(fill="x", padx=15, pady=(16, 15))
+    def _on_session_name_change(self, *args):
+        if self.session_name.get().strip():
+            self.run_analalysis_button.configure(
+                state="normal",
+                fg_color="#0F6E56",
+                hover_color="#0A4D3C"
+            )
+        else:
+            self.next_btn.configure(
+                state="disabled",
+                fg_color="#A0B4C8",
+                hover_color="#A0B4C8"
+            )
     def runAnalysisPopup(self):
         popup = ctk.CTkToplevel(self)
         popup.title("Running Analysis")
