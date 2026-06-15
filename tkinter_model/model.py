@@ -1448,10 +1448,12 @@ class RunModelView(ctk.CTkScrollableFrame):
         # RIGHT SIDE: STREAM PREVIEW MONITOR
         right_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         right_col.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
+        self.setup_data_input_section(right_col)
+        input_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        input_frame.pack(fill="x", pady=(0, 20))
+        ctk.CTkLabel(input_frame, text="Model Predictions", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
         
-        ctk.CTkLabel(right_col, text="Model Predictions", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
-        
-        table_frame = ctk.CTkFrame(right_col, fg_color="transparent")
+        table_frame = ctk.CTkFrame(input_frame, fg_color="transparent")
         table_frame.pack(fill="x", padx=15, pady=10)
         table_frame.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="live_table")
 
@@ -1465,8 +1467,6 @@ class RunModelView(ctk.CTkScrollableFrame):
         self.add_mock_row(table_frame, 4, "PT-5511", "71% Positive", "0.55 (Mod)", "Caution / Flag", "#FAEEDA", "#854F0B")
 
         ctk.CTkButton(right_col,text="Export to CSV").pack()
-        # BOTTOM SECTION: PATIENT DATA INPUT
-        self.setup_data_input_section()
     def draw_step_bar(self):
         sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
         sb_frame.pack(fill="x", pady=(0, 20))
@@ -1486,14 +1486,12 @@ class RunModelView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(parent, text=trust, font=ctk.CTkFont(size=12), text_color="#495057").grid(row=r, column=2, sticky="w", pady=6)
         ctk.CTkLabel(parent, text=status, width=110, height=20, corner_radius=10, fg_color=bg, text_color=tc, font=ctk.CTkFont(size=10, weight="bold")).grid(row=r, column=3, sticky="e", pady=6)
 
-    def setup_data_input_section(self):
-        input_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
-        input_frame.pack(fill="x", pady=(0, 20))
+    def setup_data_input_section(self, frame):
         
-        ctk.CTkLabel(input_frame, text="📝 Patient Data Input", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=(12, 5))
+        ctk.CTkLabel(frame, text="📝 Patient Data Input", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=(12, 5))
         
         # Tabs for Batch vs Single Input
-        self.tabs = ctk.CTkTabview(input_frame, fg_color="#F8F9FA", segmented_button_selected_color="#0F6E56", segmented_button_selected_hover_color="#0A4D3C", height=350)
+        self.tabs = ctk.CTkTabview(frame, fg_color="#F8F9FA", segmented_button_selected_color="#0F6E56", segmented_button_selected_hover_color="#0A4D3C", height=350)
         self.tabs.pack(fill="x", padx=15, pady=(0, 15))
         
         self.tabs.add("Batch Processing (CSV)")
