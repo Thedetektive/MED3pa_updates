@@ -238,10 +238,11 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
                 hover_color="#0A4D3C"
             )
         else:
-            self.next_btn.configure(
+            self.run_analalysis_button.configure(
                 state="disabled",
-                fg_color="#A0B4C8",
-                hover_color="#A0B4C8"
+                fg_color="#8DB5AC", 
+                hover_color="#8DB5AC", 
+                text_color="#FFFFFF",
             )
     def runAnalysisPopup(self):
         popup = ctk.CTkToplevel(self)
