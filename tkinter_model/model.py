@@ -1466,7 +1466,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         self.add_mock_row(table_frame, 3, "PT-3329", "12% Negative", "0.89 (High)", "Accept Prediction", "#EAF3DE", "#3B6D11")
         self.add_mock_row(table_frame, 4, "PT-5511", "71% Positive", "0.55 (Mod)", "Caution / Flag", "#FAEEDA", "#854F0B")
 
-        ctk.CTkButton(right_col,text="Export to CSV").pack()
+        ctk.CTkButton(input_frame, text="Export to CSV").pack()
     def draw_step_bar(self):
         sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
         sb_frame.pack(fill="x", pady=(0, 20))
