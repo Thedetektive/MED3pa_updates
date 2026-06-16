@@ -233,7 +233,28 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         )
         self.run_analalysis_button.pack(fill="x", padx=15, pady=(16, 15))
     def _on_session_name_change(self, *args):
-        if self.session_name.get().strip():
+        self._validate_run_analysis_button()
+
+    def _validate_run_analysis_button(self, *args):
+        required_filled = bool(self.session_name.get().strip())
+
+        # IPC hyperparameters (always required)
+        required_filled = required_filled and bool(self.ipc_n_estimators_entry.get().strip())
+        required_filled = required_filled and bool(self.ipc_max_depth_entry.get().strip())
+        required_filled = required_filled and bool(self.ipc_min_samples_split_entry.get().strip())
+        # IPC custom function is only required if "custom" metric is selected
+        if self.ipc_metric_var.get() == "custom":
+            required_filled = required_filled and bool(self.ipc_custom_entry.get().strip())
+
+        # APC hyperparameters (always required)
+        required_filled = required_filled and bool(self.apc_min_samples_leaf_entry.get().strip())
+        required_filled = required_filled and bool(self.apc_ccp_alpha_entry.get().strip())
+
+        # MPC custom function is only required if "custom" strategy is selected
+        if self.mpc_strategy_var.get() == "custom":
+            required_filled = required_filled and bool(self.mpc_custom_entry.get().strip())
+
+        if required_filled:
             self.run_analalysis_button.configure(
                 state="normal",
                 fg_color="#0F6E56",
@@ -386,16 +407,19 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
                     text_color="#6C757D").grid(row=0, column=0, sticky="w", pady=(2, 0))
         self.ipc_n_estimators_entry = ctk.CTkEntry(hp_grid, placeholder_text="e.g. 100", height=28)
         self.ipc_n_estimators_entry.grid(row=1, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
+        self.ipc_n_estimators_entry.bind("<KeyRelease>", self._validate_run_analysis_button)
 
         ctk.CTkLabel(hp_grid, text="max_depth", font=ctk.CTkFont(size=11),
                     text_color="#6C757D").grid(row=0, column=1, sticky="w", pady=(2, 0))
         self.ipc_max_depth_entry = ctk.CTkEntry(hp_grid, placeholder_text="e.g. 5", height=28)
         self.ipc_max_depth_entry.grid(row=1, column=1, sticky="ew", pady=(0, 6))
+        self.ipc_max_depth_entry.bind("<KeyRelease>", self._validate_run_analysis_button)
 
         ctk.CTkLabel(hp_grid, text="min_samples_split", font=ctk.CTkFont(size=11),
                     text_color="#6C757D").grid(row=2, column=0, sticky="w")
         self.ipc_min_samples_split_entry = ctk.CTkEntry(hp_grid, placeholder_text="e.g. 2", height=28)
         self.ipc_min_samples_split_entry.grid(row=3, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
+        self.ipc_min_samples_split_entry.bind("<KeyRelease>", self._validate_run_analysis_button)
 
         # Confidence metric formulation
         ctk.CTkLabel(body, text="Confidence Metric Formulation  (cᵢ)",
@@ -425,6 +449,7 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
             height=30
         )
         self.ipc_custom_entry.pack(fill="x", pady=(2, 4))
+        self.ipc_custom_entry.bind("<KeyRelease>", self._validate_run_analysis_button)
      
 
     def _toggle_ipc_custom(self):
@@ -432,6 +457,7 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
             self.ipc_custom_frame.pack(fill="x", padx=0, pady=(0, 4))
         else:
             self.ipc_custom_frame.pack_forget()
+        self._validate_run_analysis_button()
 
 
     # ── APC section ───────────────────────────────────────────────────
@@ -469,11 +495,13 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
                     text_color="#6C757D").grid(row=0, column=0, sticky="w")
         self.apc_min_samples_leaf_entry = ctk.CTkEntry(cc_grid, placeholder_text="e.g. 5", height=28)
         self.apc_min_samples_leaf_entry.grid(row=1, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
+        self.apc_min_samples_leaf_entry.bind("<KeyRelease>", self._validate_run_analysis_button)
 
         ctk.CTkLabel(cc_grid, text="ccp_alpha", font=ctk.CTkFont(size=11),
                     text_color="#6C757D").grid(row=0, column=1, sticky="w")
         self.apc_ccp_alpha_entry = ctk.CTkEntry(cc_grid, placeholder_text="e.g. 0.01", height=28)
         self.apc_ccp_alpha_entry.grid(row=1, column=1, sticky="ew", pady=(0, 6))
+        self.apc_ccp_alpha_entry.bind("<KeyRelease>", self._validate_run_analysis_button)
 
     # ── MPC section ───────────────────────────────────────────────────
     def _build_mpc_section(self, parent):
@@ -513,6 +541,7 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
             height=30
         )
         self.mpc_custom_entry.pack(fill="x", pady=(2, 4))
+        self.mpc_custom_entry.bind("<KeyRelease>", self._validate_run_analysis_button)
         # hidden by default (custom not selected)
 
     def _toggle_mpc_custom(self):
@@ -520,6 +549,7 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
             self.mpc_custom_frame.pack(fill="x", padx=0, pady=(0, 4))
         else:
             self.mpc_custom_frame.pack_forget()
+        self._validate_run_analysis_button()
 
     # ── Step bar ──────────────────────────────────────────────────────
     def draw_step_bar(self):
@@ -578,7 +608,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(title_frame, text="Analysis workspace", font=ctk.CTkFont(size=18, weight="bold"), text_color="#212529").pack(anchor="w")
         ctk.CTkLabel(title_frame, text="ICU in-hospital mortality · MIMIC-IV BaseModel", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w")
 
-        ctk.CTkButton(top_bar, text="▶ Run analysis", fg_color="#185FA5", hover_color="#124A80", text_color="#FFFFFF", width=120, height=34, command=self.toggle_export_popup).pack(side="right", padx=5)
+        ctk.CTkButton(top_bar, text="▶ Create Model", fg_color="#185FA5", hover_color="#124A80", text_color="#FFFFFF", width=120, height=34, command=self.toggle_export_popup).pack(side="right", padx=5)
 
         self.draw_step_bar()
         session_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
