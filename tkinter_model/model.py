@@ -5,7 +5,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 from PIL import Image
 import matplotlib.cm as cm
-import math
+
 # Set application styling
 ctk.set_appearance_mode("Light")
 ctk.set_default_color_theme("blue")
@@ -24,6 +24,7 @@ class MED3paApp(ctk.CTk):
 
         self.nav_buttons = {}
         self.frames = {}
+        self.sessions = {}
 
         # Handle graceful exit on window close
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -181,6 +182,7 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         super().__init__(parent, fg_color="#FFFFFF", corner_radius=0)
         self.controller = controller
         self.base_model_chosen = ctk.StringVar(value="default")
+        self.training_data_chosen = ctk.StringVar(value="In-Hospital Mortality Risk Data")
         top_bar = ctk.CTkFrame(self, fg_color="transparent", height=70)
         top_bar.pack(fill="x", pady=(15, 15))
         title_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
@@ -207,7 +209,7 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(model_card, text="Base Model Source Architecture", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
         ctk.CTkComboBox(model_card, values=["MIMIC-IV Base Logistics Ensemble", "Hippo-EHR Transformers v4", "Custom Local XGBoost Checkpoint"], width=320, height=32, variable = self.base_model_chosen).pack(anchor="w", padx=15, pady=(2, 12))
         ctk.CTkLabel(model_card, text="Training Data (.csv)", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
-        ctk.CTkComboBox(model_card, values=["In-Hospital Mortality Risk Data", "30-Day Readmission Diagnostic Index", "Septic Shock Onset Threshold"], width=320, height=32).pack(anchor="w", padx=15, pady=(2, 15))
+        ctk.CTkComboBox(model_card, values=["In-Hospital Mortality Risk Data", "30-Day Readmission Diagnostic Index", "Septic Shock Onset Threshold"], width=320, height=32, variable=self.training_data_chosen).pack(anchor="w", padx=15, pady=(2, 15))
         ctk.CTkLabel(model_card, text="Session Name", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
         session_entry = ctk.CTkEntry(model_card, textvariable=self.session_name)
         session_entry.pack(fill="x", padx=15, pady=(2, 15))
@@ -284,6 +286,7 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
         def run_step(i):
             if i >= len(steps):
                 close_btn.configure(state="normal")
+                self.save_session()
                 return
             delay, value, label = steps[i]
             popup.after(delay, lambda: (
@@ -293,6 +296,29 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
             ))
 
         popup.after(100, lambda: run_step(0))
+
+    def save_session(self):
+        name = self.session_name.get().strip()
+        if not name:
+            return
+        config = {
+            "base_model": self.base_model_chosen.get(),
+            "training_data": self.training_data_chosen.get(),
+            "ipc_n_estimators": self.ipc_n_estimators_entry.get(),
+            "ipc_max_depth": self.ipc_max_depth_entry.get(),
+            "ipc_min_samples_split": self.ipc_min_samples_split_entry.get(),
+            "ipc_metric": self.ipc_metric_var.get(),
+            "ipc_custom_function": self.ipc_custom_entry.get(),
+            "apc_tree_depth": int(self.slider_depth.get()),
+            "apc_min_samples_leaf": self.apc_min_samples_leaf_entry.get(),
+            "apc_ccp_alpha": self.apc_ccp_alpha_entry.get(),
+            "mpc_strategy": self.mpc_strategy_var.get(),
+            "mpc_custom_function": self.mpc_custom_entry.get(),
+        }
+        self.controller.sessions[name] = config
+        results_view = self.controller.frames.get("ResultsView")
+        if results_view is not None:
+            self.controller.after(0, results_view.refresh_sessions)
 
     # ── Collapsible section helper ────────────────────────────────────
     def _make_collapsible(self, parent, title, subtitle, accent):
@@ -358,18 +384,18 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(hp_grid, text="n_estimators", font=ctk.CTkFont(size=11),
                     text_color="#6C757D").grid(row=0, column=0, sticky="w", pady=(2, 0))
-        ctk.CTkEntry(hp_grid, placeholder_text="e.g. 100", height=28
-                    ).grid(row=1, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
+        self.ipc_n_estimators_entry = ctk.CTkEntry(hp_grid, placeholder_text="e.g. 100", height=28)
+        self.ipc_n_estimators_entry.grid(row=1, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
 
         ctk.CTkLabel(hp_grid, text="max_depth", font=ctk.CTkFont(size=11),
                     text_color="#6C757D").grid(row=0, column=1, sticky="w", pady=(2, 0))
-        ctk.CTkEntry(hp_grid, placeholder_text="e.g. 5", height=28
-                    ).grid(row=1, column=1, sticky="ew", pady=(0, 6))
+        self.ipc_max_depth_entry = ctk.CTkEntry(hp_grid, placeholder_text="e.g. 5", height=28)
+        self.ipc_max_depth_entry.grid(row=1, column=1, sticky="ew", pady=(0, 6))
 
         ctk.CTkLabel(hp_grid, text="min_samples_split", font=ctk.CTkFont(size=11),
                     text_color="#6C757D").grid(row=2, column=0, sticky="w")
-        ctk.CTkEntry(hp_grid, placeholder_text="e.g. 2", height=28
-                    ).grid(row=3, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
+        self.ipc_min_samples_split_entry = ctk.CTkEntry(hp_grid, placeholder_text="e.g. 2", height=28)
+        self.ipc_min_samples_split_entry.grid(row=3, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
 
         # Confidence metric formulation
         ctk.CTkLabel(body, text="Confidence Metric Formulation  (cᵢ)",
@@ -441,13 +467,13 @@ class UploadConfigurationView(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(cc_grid, text="min_samples_leaf", font=ctk.CTkFont(size=11),
                     text_color="#6C757D").grid(row=0, column=0, sticky="w")
-        ctk.CTkEntry(cc_grid, placeholder_text="e.g. 5", height=28
-                    ).grid(row=1, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
+        self.apc_min_samples_leaf_entry = ctk.CTkEntry(cc_grid, placeholder_text="e.g. 5", height=28)
+        self.apc_min_samples_leaf_entry.grid(row=1, column=0, sticky="ew", padx=(0, 6), pady=(0, 6))
 
         ctk.CTkLabel(cc_grid, text="ccp_alpha", font=ctk.CTkFont(size=11),
                     text_color="#6C757D").grid(row=0, column=1, sticky="w")
-        ctk.CTkEntry(cc_grid, placeholder_text="e.g. 0.01", height=28
-                    ).grid(row=1, column=1, sticky="ew", pady=(0, 6))
+        self.apc_ccp_alpha_entry = ctk.CTkEntry(cc_grid, placeholder_text="e.g. 0.01", height=28)
+        self.apc_ccp_alpha_entry.grid(row=1, column=1, sticky="ew", pady=(0, 6))
 
     # ── MPC section ───────────────────────────────────────────────────
     def _build_mpc_section(self, parent):
@@ -565,7 +591,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.session_var = ctk.StringVar(value="")
         self.session_combo = ctk.CTkComboBox(
             session_row,
-            values=["— select a session —", "Session A · 2025-06-01", "Session B · 2025-06-08"],
+            values=["— select a session —"],
             variable=self.session_var,
             command=self.on_session_selected,
             width=320, height=32
@@ -573,6 +599,12 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.session_combo.pack(side="left")
         ctk.CTkLabel(session_row, text="No session loaded", font=ctk.CTkFont(size=11), text_color="#6C757D").pack(side="left", padx=(12, 0))
         self.session_status_lbl = session_row.winfo_children()[-1]  # keep a ref
+
+        self.config_card = ctk.CTkFrame(session_card, fg_color="#F8F9FA", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        ctk.CTkLabel(self.config_card, text="⚙ Saved Configuration", font=ctk.CTkFont(size=12, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=12, pady=(10, 4))
+        self.config_grid = ctk.CTkFrame(self.config_card, fg_color="transparent")
+        self.config_grid.pack(fill="x", padx=12, pady=(0, 10))
+        self.config_grid.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="cfg")
         self.viz_container = ctk.CTkFrame(self, fg_color="transparent")
         cards_frame = ctk.CTkFrame(self.viz_container, fg_color="transparent")
         cards_frame.pack(fill="x", pady=(0, 20))
@@ -713,14 +745,44 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         popup.geometry(f"+{x}+{y}")
 
 
+    def refresh_sessions(self):
+        names = list(self.controller.sessions.keys())
+        self.session_combo.configure(values=["— select a session —"] + names)
+
+    def display_config(self, config):
+        for child in self.config_grid.winfo_children():
+            child.destroy()
+        fields = [
+            ("Base Model", config.get("base_model", "")),
+            ("Training Data", config.get("training_data", "")),
+            ("IPC n_estimators", config.get("ipc_n_estimators", "")),
+            ("IPC max_depth", config.get("ipc_max_depth", "")),
+            ("IPC min_samples_split", config.get("ipc_min_samples_split", "")),
+            ("IPC metric", config.get("ipc_metric", "")),
+            ("IPC custom f(p, y)", config.get("ipc_custom_function", "")),
+            ("APC tree_depth", config.get("apc_tree_depth", "")),
+            ("APC min_samples_leaf", config.get("apc_min_samples_leaf", "")),
+            ("APC ccp_alpha", config.get("apc_ccp_alpha", "")),
+            ("MPC strategy", config.get("mpc_strategy", "")),
+            ("MPC custom f(IPC, APC)", config.get("mpc_custom_function", "")),
+        ]
+        for idx, (label, value) in enumerate(fields):
+            row = (idx // 4) * 2
+            col = idx % 4
+            ctk.CTkLabel(self.config_grid, text=label, font=ctk.CTkFont(size=10), text_color="#6C757D").grid(row=row, column=col, sticky="w", padx=4, pady=(4, 0))
+            ctk.CTkLabel(self.config_grid, text=str(value) if str(value) != "" else "—", font=ctk.CTkFont(size=11, weight="bold"), text_color="#212529").grid(row=row + 1, column=col, sticky="w", padx=4, pady=(0, 4))
+
     def on_session_selected(self, value: str):
         if value.startswith("—"):          # placeholder selected
             self.viz_container.pack_forget()
+            self.config_card.pack_forget()
             self.session_status_lbl.configure(text="No session loaded", text_color="#6C757D")
             return
 
-        # Load data for the chosen session here
-        # e.g. self.load_session_data(value)
+        config = self.controller.sessions.get(value)
+        if config is not None:
+            self.display_config(config)
+            self.config_card.pack(fill="x", padx=15, pady=(0, 12))
 
         self.session_status_lbl.configure(text=f"✔ Loaded: {value}", text_color="#0F6E56")
 
@@ -1112,16 +1174,16 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         if show_node_a:
             style_a = hl(box_green, "#1D9E75") if hn == "node_a" else box_green
             size_a  = 8 if hn == "node_a" else 7
-            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: {round(1240/4476*100,2)} %\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=size_a, bbox=style_a)
+            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: 1,240 pts\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=size_a, bbox=style_a)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
             self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
         else:
-            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: {round(1240/4476*100,2)} %\nConf: High", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
+            self.ax_tree.text(25, 54, "Node A\nBUN ≤ 25.5\nSize: 1,240 pts\nConf: High", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
             self.ax_tree.text(31, 74, "True", size=7, color="#A9A9A9", weight="bold", alpha=0.2)
 
         # Layer 2: Node B (Always visible)
-        self.ax_tree.text(75, 54, f"Node B\nBUN > 25.5\nSize: {round(3236/4476*100,2)} %\n % left: {int((60 -(100-self.current_dr))/60*100)}", ha='center', va='center', size=7, bbox=box_root)
+        self.ax_tree.text(75, 54, f"Node B\nBUN > 25.5\nSize: 3,236 pts\n % left: {int((60 -(100-self.current_dr))/60*100)}", ha='center', va='center', size=7, bbox=box_root)
         self.ax_tree.annotate("", xy=(75, 65), xytext=(55, 80), arrowprops=arrow_style)
         self.ax_tree.text(64, 74, "False", size=7, color="#D85A30", weight="bold")
 
@@ -1129,19 +1191,19 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         if show_node_b1:
             style_b1 = hl(box_root, "#185FA5") if hn == "node_b1" else box_root
             size_b1  = 8 if hn == "node_b1" else 7
-            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: {round(2145/4476*100,2)} %\n % left: {int((22 -(100-self.current_dr))/22*100)}", ha='center', va='center', size=size_b1, bbox=style_b1)
+            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: 2,145 pts\n % left: {int((22 -(100-self.current_dr))/22*100)}", ha='center', va='center', size=size_b1, bbox=style_b1)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
         else:
-            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: {round(2145/4476*100,2)} %\nConf: Mod", ha='center', va='center', size=7, bbox=box_grey, alpha=.2)
+            self.ax_tree.text(60, 18, "Node B1\nGCS ≥ 10\nSize: 2,145 pts\nConf: Mod", ha='center', va='center', size=7, bbox=box_grey, alpha=.2)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
 
         if show_node_b2:
             style_b2 = hl(box_orange, "#D85A30") if hn == "node_b2" else box_orange
             size_b2  = 8 if hn == "node_b2" else 7
-            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: {round(1091/4476*100,2)} %\n % left: {int((8 -(100-self.current_dr))/8*100)}", ha='center', va='center', size=size_b2, bbox=style_b2)
+            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: 1,091 pts\n % left: {int((8 -(100-self.current_dr))/8*100)}", ha='center', va='center', size=size_b2, bbox=style_b2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
         else:
-            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: {round(1091/4476*100,2)} %\nConf: Low", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
+            self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
 
         sm = plt.cm.ScalarMappable(cmap=cm.RdYlGn, norm=plt.Normalize(vmin=0, vmax=1))
