@@ -733,6 +733,22 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         tree_card.grid(row=0, column=2, padx=(0, 0), sticky="nsew")
         ctk.CTkLabel(tree_card, text="🌿 APC Hierarchical Decision Tree (Fades when DR drops)", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
 
+        self.tree_density_metrics = {
+            "APC Confidence":  {"cmap": cm.RdYlGn,  "root": ("#FCF7E0", "#E0B500"), "green": ("#EAF3DE", "#1D9E75"), "orange": ("#FAECE7", "#D85A30")},
+            "Sensitivity":     {"cmap": cm.PuBu,    "root": ("#EDF4FA", "#4D9AC9"), "green": ("#E3EEF6", "#2C7FB8"), "orange": ("#D4E4F0", "#08519C")},
+            "Specificity":     {"cmap": cm.BuPu,    "root": ("#F2EDF7", "#9E7BC0"), "green": ("#ECE7F2", "#8856A7"), "orange": ("#E0D6EB", "#54278F")},
+            "NPV":             {"cmap": cm.YlOrBr,  "root": ("#FFF9E8", "#E0AE2E"), "green": ("#FFF4D6", "#D9930A"), "orange": ("#FCE3B4", "#A6660A")},
+        }
+        self.tree_density_var = ctk.StringVar(value="APC Confidence")
+        ctk.CTkComboBox(
+            tree_card,
+            values=list(self.tree_density_metrics.keys()),
+            variable=self.tree_density_var,
+            command=lambda _v: self.draw_tree(),
+            width=180, height=26,
+            font=ctk.CTkFont(size=11)
+        ).pack(anchor="w", padx=15, pady=(0, 4))
+
         self.fig_tree, self.ax_tree = plt.subplots(figsize=(4.5, 2.8), dpi=100)
         self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_card)
         self.canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
@@ -1142,7 +1158,6 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             self.canvas_mdr.draw()
 
     def _on_dot_click(self, event):
-        """Detect clicks near timeline dots and highlight the matching tree node."""
         if hasattr(self, 'cbar') and self.cbar is not None:
             try:
                 self.cbar.remove()
@@ -1168,6 +1183,14 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             self.draw_tree()
 
     def draw_tree(self):
+        if hasattr(self, 'cbar') and self.cbar is not None:
+            try:
+                self.cbar.remove()
+            except Exception:
+                pass
+        self.cbar = None
+        self.ax_tree.set_subplotspec(plt.GridSpec(1, 1)[0, 0])
+        self.ax_tree.set_position(self.ax_tree.get_subplotspec().get_position(self.fig_tree))
         self.ax_tree.clear()
         self.fig_tree.patch.set_facecolor('#FFFFFF')
         self.ax_tree.set_facecolor('#FFFFFF')
@@ -1175,11 +1198,17 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.ax_tree.set_xlim(0, 100)
         self.ax_tree.set_ylim(0, 100)
 
+        density_name = self.tree_density_var.get()
+        density_cfg = self.tree_density_metrics[density_name]
+        green_face, green_edge = density_cfg["green"]
+        orange_face, orange_edge = density_cfg["orange"]
+        root_face, root_edge = density_cfg["root"]
+
         # Base structure styles
-        box_root   = dict(boxstyle="round,pad=0.4", facecolor="#F8F9FA", edgecolor="#FFD700", lw=1.5)
-        box_green  = dict(boxstyle="round,pad=0.4", facecolor="#EAF3DE", edgecolor="#1D9E75", lw=1)
+        box_root   = dict(boxstyle="round,pad=0.4", facecolor=root_face, edgecolor=root_edge, lw=1.5)
+        box_green  = dict(boxstyle="round,pad=0.4", facecolor=green_face, edgecolor=green_edge, lw=1)
         box_grey   = dict(boxstyle="round,pad=0.4", facecolor="#F2F4F4", edgecolor="#A9A9A9", lw=1, alpha=0.2)
-        box_orange = dict(boxstyle="round,pad=0.4", facecolor="#FAECE7", edgecolor="#D85A30", lw=1)
+        box_orange = dict(boxstyle="round,pad=0.4", facecolor=orange_face, edgecolor=orange_edge, lw=1)
         arrow_style = dict(arrowstyle="->", color="#ADB5BD", lw=1.5)
 
         # Returns a bold highlighted version of any box style
@@ -1202,7 +1231,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
 
         # Layer 2: Node A
         if show_node_a:
-            style_a = hl(box_green, "#1D9E75") if hn == "node_a" else box_green
+            style_a = hl(box_green, green_edge) if hn == "node_a" else box_green
             size_a  = 8 if hn == "node_a" else 7
             self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: 1,240 pts\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=size_a, bbox=style_a)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
@@ -1219,7 +1248,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
 
         # Layer 3: Terminal Children from Node B
         if show_node_b1:
-            style_b1 = hl(box_root, "#185FA5") if hn == "node_b1" else box_root
+            style_b1 = hl(box_root, root_edge) if hn == "node_b1" else box_root
             size_b1  = 8 if hn == "node_b1" else 7
             self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: 2,145 pts\n % left: {int((22 -(100-self.current_dr))/22*100)}", ha='center', va='center', size=size_b1, bbox=style_b1)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
@@ -1228,7 +1257,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
 
         if show_node_b2:
-            style_b2 = hl(box_orange, "#D85A30") if hn == "node_b2" else box_orange
+            style_b2 = hl(box_orange, orange_edge) if hn == "node_b2" else box_orange
             size_b2  = 8 if hn == "node_b2" else 7
             self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: 1,091 pts\n % left: {int((8 -(100-self.current_dr))/8*100)}", ha='center', va='center', size=size_b2, bbox=style_b2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
@@ -1236,12 +1265,12 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
 
-        sm = plt.cm.ScalarMappable(cmap=cm.RdYlGn, norm=plt.Normalize(vmin=0, vmax=1))
+        sm = plt.cm.ScalarMappable(cmap=density_cfg["cmap"], norm=plt.Normalize(vmin=0, vmax=1))
         sm.set_array([])
 
         self.cbar = plt.colorbar(sm, ax=self.ax_tree, shrink=0.6)
 
-        self.cbar.set_label("APC Confidence", fontsize=8)
+        self.cbar.set_label(density_name, fontsize=8)
         self.cbar.ax.tick_params(labelsize=7)
         self.cbar.outline.set_edgecolor('#E9ECEF')
 
