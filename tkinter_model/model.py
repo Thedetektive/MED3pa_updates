@@ -25,6 +25,7 @@ class MED3paApp(ctk.CTk):
         self.nav_buttons = {}
         self.frames = {}
         self.sessions = {}
+        self.patient_entries = {}
 
         # Handle graceful exit on window close
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -67,7 +68,7 @@ class MED3paApp(ctk.CTk):
         self.create_nav_item("Analysis Workspace", target_frame="ResultsView")
         # self.create_nav_item("Patient profiles", target_frame="ProfilesView")
         self.create_nav_item("Deployment", target_frame="RunView")
-        # self.create_nav_item("Patient lookup", target_frame="LookupView")
+        self.create_nav_item("Patient lookup", target_frame="LookupView")
         # self.create_nav_item("Session history", target_frame="HistoryView")
 
         self.sidebar_footer = ctk.CTkFrame(self.sidebar, fg_color="transparent")
@@ -1280,16 +1281,16 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         if show_node_a:
             style_a = hl(box_green, green_edge) if hn == "node_a" else box_green
             size_a  = 8 if hn == "node_a" else 7
-            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: 1,240 pts\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=size_a, bbox=style_a)
+            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: {round(1240/4476*100,2)} %\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=size_a, bbox=style_a)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
             self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
         else:
-            self.ax_tree.text(25, 54, "Node A\nBUN ≤ 25.5\nSize: 1,240 pts\nConf: High", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
+            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: {round(1240/4476*100,2)} %\nConf: High", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
             self.ax_tree.text(31, 74, "True", size=7, color="#A9A9A9", weight="bold", alpha=0.2)
 
         # Layer 2: Node B (Always visible)
-        self.ax_tree.text(75, 54, f"Node B\nBUN > 25.5\nSize: 3,236 pts\n % left: {int((60 -(100-self.current_dr))/60*100)}", ha='center', va='center', size=7, bbox=box_root)
+        self.ax_tree.text(75, 54, f"Node B\nBUN > 25.5\nSize: {round(3236/4476*100,2)} %\n % left: {int((60 -(100-self.current_dr))/60*100)}", ha='center', va='center', size=7, bbox=box_root)
         self.ax_tree.annotate("", xy=(75, 65), xytext=(55, 80), arrowprops=arrow_style)
         self.ax_tree.text(64, 74, "False", size=7, color="#D85A30", weight="bold")
 
@@ -1297,19 +1298,19 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         if show_node_b1:
             style_b1 = hl(box_root, root_edge) if hn == "node_b1" else box_root
             size_b1  = 8 if hn == "node_b1" else 7
-            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: 2,145 pts\n % left: {int((22 -(100-self.current_dr))/22*100)}", ha='center', va='center', size=size_b1, bbox=style_b1)
+            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: {round(2145/4476*100,2)} %\n % left: {int((22 -(100-self.current_dr))/22*100)}", ha='center', va='center', size=size_b1, bbox=style_b1)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
         else:
-            self.ax_tree.text(60, 18, "Node B1\nGCS ≥ 10\nSize: 2,145 pts\nConf: Mod", ha='center', va='center', size=7, bbox=box_grey, alpha=.2)
+            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: {round(2145/4476*100,2)} %\nConf: Mod", ha='center', va='center', size=7, bbox=box_grey, alpha=.2)
             self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
 
         if show_node_b2:
             style_b2 = hl(box_orange, orange_edge) if hn == "node_b2" else box_orange
             size_b2  = 8 if hn == "node_b2" else 7
-            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: 1,091 pts\n % left: {int((8 -(100-self.current_dr))/8*100)}", ha='center', va='center', size=size_b2, bbox=style_b2)
+            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: {round(1091/4476*100,2)} %\n % left: {int((8 -(100-self.current_dr))/8*100)}", ha='center', va='center', size=size_b2, bbox=style_b2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
         else:
-            self.ax_tree.text(90, 18, "Node B2\nGCS < 7.5\nSize: 1,091 pts\nConf: Low", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
+            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: {round(1091/4476*100,2)} %\nConf: Low", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
             self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
 
         sm = plt.cm.ScalarMappable(cmap=density_cfg["cmap"], norm=plt.Normalize(vmin=0, vmax=1))
@@ -1582,7 +1583,7 @@ class ProfilesView(ctk.CTkScrollableFrame):
 class RunModelView(ctk.CTkScrollableFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, fg_color="#FFFFFF", corner_radius=0)
-        
+        self.controller = controller
         top_bar = ctk.CTkFrame(self, fg_color="transparent", height=70)
         top_bar.pack(fill="x", pady=(15, 15))
         title_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
@@ -1594,7 +1595,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         grid_frame.pack(fill="x", pady=(0, 20))
         grid_frame.grid_columnconfigure(0, weight=2, uniform="run_split")
         grid_frame.grid_columnconfigure(1, weight=3, uniform="run_split")
-
+        self.number_of_patients = 4
         # LEFT SIDE: CONTROL CONTROLLER CARD
         left_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         left_col.grid(row=0, column=0, padx=(0, 10), sticky="nsew")
@@ -1616,7 +1617,6 @@ class RunModelView(ctk.CTkScrollableFrame):
         # RIGHT SIDE: STREAM PREVIEW MONITOR
         right_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         right_col.grid(row=0, column=1, padx=(10, 0), sticky="nsew")
-        self.setup_data_input_section(right_col)
         input_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         input_frame.pack(fill="x", pady=(0, 20))
         ctk.CTkLabel(input_frame, text="Model Predictions", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
@@ -1624,7 +1624,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         table_frame = ctk.CTkFrame(input_frame, fg_color="transparent")
         table_frame.pack(fill="x", padx=15, pady=10)
         table_frame.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="live_table")
-
+        self.setup_data_input_section(right_col,table_frame)
         headers = ["Patient ID", "Base Model Risk", "MED3pa Trust", "Profile", "Routing Status"]
         for idx, h in enumerate(headers):
             ctk.CTkLabel(table_frame, text=h, font=ctk.CTkFont(size=11, weight="bold"), text_color="#6C757D").grid(row=0, column=idx, sticky="w" if idx < 4 else "e", pady=5)
@@ -1655,7 +1655,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(parent, text=profile, font=ctk.CTkFont(size=12), text_color="#495057").grid(row=r, column=3, sticky="w", pady=6)
         ctk.CTkLabel(parent, text=status, width=110, height=20, corner_radius=10, fg_color=bg, text_color=tc, font=ctk.CTkFont(size=10, weight="bold")).grid(row=r, column=4, sticky="e", pady=6)
 
-    def setup_data_input_section(self, frame):
+    def setup_data_input_section(self, frame, table_frame):
         
         ctk.CTkLabel(frame, text="📝 Patient Data Input", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=(12, 5))
         
@@ -1683,7 +1683,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         manual_tab = self.tabs.tab("Single Patient (Manual Entry)")
         
         fields = [
-            "stay_id", "hospitalid", "deceased", "age", "bicarbonate_min", "bicarbonate_max",
+            "patient_id", "hospitalid", "deceased", "age", "bicarbonate_min", "bicarbonate_max",
             "bilirubin_min", "bilirubin_max", "potassium_min", "potassium_max", "sodium_min",
             "sodium_max", "bun_min", "bun_max", "wbc_min", "wbc_max", "pao2fio2", "cpap",
             "vent", "gcs_min", "hr_min", "hr_max", "tempc_min", "tempc_max", "sbp_min",
@@ -1713,7 +1713,7 @@ class RunModelView(ctk.CTkScrollableFrame):
 
         btn_frame = ctk.CTkFrame(manual_tab, fg_color="transparent")
         btn_frame.pack(fill="x", pady=15)
-        ctk.CTkButton(btn_frame, text="▶ Run Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold")).pack(side="right", padx=10)
+        ctk.CTkButton(btn_frame, text="▶ Apply Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold"),command=lambda: self.apply_model(table_frame)).pack(side="right", padx=10)
         ctk.CTkButton(btn_frame, text="Clear Fields", fg_color="transparent", text_color="#D9534F", border_width=1, border_color="#D9534F", hover_color="#FDF2F2").pack(side="right", padx=10)
 
     def select_csv_file(self):
@@ -1723,14 +1723,38 @@ class RunModelView(ctk.CTkScrollableFrame):
         )
         if filepath:
             self.csv_path_var.set(filepath)
+    def apply_model(self, table_frame):
+        values = {field: ent.get() for field, ent in self.patient_entries.items()}
 
+        patient_id = values["patient_id"]
+        self.controller.patient_entries[patient_id] = {}
+
+        for field in values:
+            self.controller.patient_entries[patient_id][field] = values[field]
+
+        self.controller.patient_entries[patient_id]["base_model_risk"] = values["cpap"]
+        self.controller.patient_entries[patient_id]["med3pa_trust"] = float(values["vent"])
+        self.controller.patient_entries[patient_id]["profile"] = (
+            "BUN ≤ 25.5" if float(values["bun_max"]) < 25.5 else "BUN > 25.5"
+        )
+        self.controller.patient_entries[patient_id]["routing_status"] = float(values["vent"]) > 0.73
+        self.number_of_patients += 1
+        self.add_mock_row(
+            table_frame, self.number_of_patients, patient_id,
+            self.controller.patient_entries[patient_id]["base_model_risk"],
+            self.controller.patient_entries[patient_id]["med3pa_trust"],
+            self.controller.patient_entries[patient_id]["profile"],
+            "Caution / Flag", "#FAEEDA", "#854F0B",
+        )
+        
 # ====================================================================
 # TAB 6: PATIENT LOOKUP
 # ====================================================================
 class LookupView(ctk.CTkScrollableFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, fg_color="#FFFFFF", corner_radius=0)
-        
+        self.controller = controller
+
         top_bar = ctk.CTkFrame(self, fg_color="transparent", height=70)
         top_bar.pack(fill="x", pady=(15, 15))
         title_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
@@ -1742,31 +1766,68 @@ class LookupView(ctk.CTkScrollableFrame):
         search_frame.pack(fill="x", pady=(0, 20))
         self.search_entry = ctk.CTkEntry(search_frame, placeholder_text="Enter Patient ID (e.g., PT-9482)", width=300, height=36)
         self.search_entry.pack(side="left", padx=(0, 10))
-        ctk.CTkButton(search_frame, text="Search", fg_color="#185FA5", text_color="#FFFFFF", width=80, height=36).pack(side="left")
+        ctk.CTkButton(search_frame, text="Search", fg_color="#185FA5", text_color="#FFFFFF", width=80, height=36,
+                      command=self.search_patient).pack(side="left")
 
-        result_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        # Container that holds one result card per patient; refreshed on search
+        self.results_container = ctk.CTkFrame(self, fg_color="transparent")
+        self.results_container.pack(fill="x")
+
+        self.render_patients()
+
+    def render_patients(self, filter_id=None):
+        # Clear existing cards
+        for child in self.results_container.winfo_children():
+            child.destroy()
+
+        patients = self.controller.patient_entries
+
+        if not patients:
+            ctk.CTkLabel(self.results_container, text="No patients available.",
+                         font=ctk.CTkFont(size=13), text_color="#6C757D").pack(anchor="w", pady=20)
+            return
+
+        shown = 0
+        for patient_id, data in patients.items():
+            if filter_id and filter_id.lower() not in patient_id.lower():
+                continue
+            self.render_card(patient_id, data)
+            shown += 1
+
+        if shown == 0:
+            ctk.CTkLabel(self.results_container, text=f"No patient matching '{filter_id}'.",
+                         font=ctk.CTkFont(size=13), text_color="#6C757D").pack(anchor="w", pady=20)
+
+    def render_card(self, patient_id, data):
+        result_card = ctk.CTkFrame(self.results_container, fg_color="#FFFFFF",
+                                   border_color="#E9ECEF", border_width=1, corner_radius=8)
         result_card.pack(fill="x", pady=10)
-        
+
         header = ctk.CTkFrame(result_card, fg_color="transparent")
         header.pack(fill="x", padx=20, pady=20)
-        ctk.CTkLabel(header, text="PT-9482", font=ctk.CTkFont(size=20, weight="bold"), text_color="#212529").pack(side="left")
-        ctk.CTkLabel(header, text="Admitted: 2026-05-18", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(side="right")
+        ctk.CTkLabel(header, text=patient_id, font=ctk.CTkFont(size=20, weight="bold"),
+                     text_color="#212529").pack(side="left")
+        ctk.CTkLabel(header, text=f"Admitted: {data.get('admitted', '—')}",
+                     font=ctk.CTkFont(size=12), text_color="#6C757D").pack(side="right")
 
         details = ctk.CTkFrame(result_card, fg_color="transparent")
         details.pack(fill="x", padx=20, pady=(0, 20))
-        details.grid_columnconfigure((0,1,2), weight=1)
+        details.grid_columnconfigure((0, 1, 2), weight=1)
 
-        self.add_detail(details, 0, "Base Model Prediction", "Positive", "#993C1D")
-        self.add_detail(details, 1, "MPC Confidence", "0.28 (Low)", "#993C1D")
-        self.add_detail(details, 2, "Action Recommendation", "Reject (Manual Review)", "#993C1D")
+        self.add_detail(details, 0, "Base Model Prediction", str(data.get("base_model_risk", "—")), "#993C1D")
+        self.add_detail(details, 1, "MPC Confidence", str(data.get("med3pa_trust", "—")), "#993C1D")
+        self.add_detail(details, 2, "Action Recommendation",
+                        "Reject (Manual Review)" if data.get("routing_status") else "Accept", "#993C1D")
+
+    def search_patient(self):
+        query = self.search_entry.get().strip()
+        self.render_patients(filter_id=query or None)
 
     def add_detail(self, parent, col, title, val, color):
         f = ctk.CTkFrame(parent, fg_color="transparent")
         f.grid(row=0, column=col, sticky="w")
         ctk.CTkLabel(f, text=title, font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w")
         ctk.CTkLabel(f, text=val, font=ctk.CTkFont(size=14, weight="bold"), text_color=color).pack(anchor="w")
-
-
 # ====================================================================
 # TAB 7: SESSION HISTORY
 # ====================================================================
