@@ -754,14 +754,13 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         _, body = self._make_collapsible(
             parent,
             "⚙ Saved Configuration",
-            "",
             "#000000"
         )
         # ctk.CTkLabel(self.config_card, text="⚙ Saved Configuration", font=ctk.CTkFont(size=12, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=12, pady=(10, 4))
         self.config_grid = ctk.CTkFrame(body, fg_color="transparent")
         self.config_grid.pack(fill="x", padx=0, pady=(0, 0))
         self.config_grid.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="cfg")
-    def _make_collapsible(self, parent, title, subtitle, accent):
+    def _make_collapsible(self, parent, title, accent):
             """Returns (outer_frame, body_frame, toggle_state_dict).
             Clicking the header toggles body_frame visibility."""
             state = {"open": False}
@@ -777,8 +776,6 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             title_block.pack(side="left", fill="x", expand=True)
             ctk.CTkLabel(title_block, text=title, font=ctk.CTkFont(size=12, weight="bold"),
                         text_color=accent).pack(anchor="w")
-            # ctk.CTkLabel(title_block, text=subtitle, font=ctk.CTkFont(size=10),
-            #             text_color="#6C757D").pack(anchor="w")
 
             body = ctk.CTkFrame(parent, fg_color="transparent")
             # body is NOT packed yet — starts collapsed
@@ -1611,14 +1608,14 @@ class RunModelView(ctk.CTkScrollableFrame):
         table_frame.pack(fill="x", padx=15, pady=10)
         table_frame.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="live_table")
 
-        headers = ["Patient ID", "Base Model Risk", "MED3pa Trust", "Routing Status"]
+        headers = ["Patient ID", "Base Model Risk", "MED3pa Trust", "Profile", "Routing Status"]
         for idx, h in enumerate(headers):
-            ctk.CTkLabel(table_frame, text=h, font=ctk.CTkFont(size=11, weight="bold"), text_color="#6C757D").grid(row=0, column=idx, sticky="w" if idx < 3 else "e", pady=5)
+            ctk.CTkLabel(table_frame, text=h, font=ctk.CTkFont(size=11, weight="bold"), text_color="#6C757D").grid(row=0, column=idx, sticky="w" if idx < 4 else "e", pady=5)
 
-        self.add_mock_row(table_frame, 1, "PT-0841", "88% Positive", "0.94 (High)", "Accept Prediction", "#EAF3DE", "#3B6D11")
-        self.add_mock_row(table_frame, 2, "PT-1940", "64% Positive", "0.31 (Low)", "Flag for Human Audit", "#FAECE7", "#993C1D")
-        self.add_mock_row(table_frame, 3, "PT-3329", "12% Negative", "0.89 (High)", "Accept Prediction", "#EAF3DE", "#3B6D11")
-        self.add_mock_row(table_frame, 4, "PT-5511", "71% Positive", "0.55 (Mod)", "Caution / Flag", "#FAEEDA", "#854F0B")
+        self.add_mock_row(table_frame, 1, "PT-0841", "88% Positive", "0.94 (High)","BUN ≤ 25.5", "Accept Prediction", "#EAF3DE", "#3B6D11")
+        self.add_mock_row(table_frame, 2, "PT-1940", "64% Positive", "0.31 (Low)","BUN > 25.5", "Flag for Human Audit", "#FAECE7", "#993C1D")
+        self.add_mock_row(table_frame, 3, "PT-3329", "12% Negative", "0.89 (High)","BUN ≤ 25.5", "Accept Prediction", "#EAF3DE", "#3B6D11")
+        self.add_mock_row(table_frame, 4, "PT-5511", "71% Positive", "0.55 (Mod)","GCS < 7.5", "Caution / Flag", "#FAEEDA", "#854F0B")
 
         ctk.CTkButton(input_frame, text="Export to CSV").pack()
     def draw_step_bar(self):
@@ -1634,11 +1631,12 @@ class RunModelView(ctk.CTkScrollableFrame):
             if idx < len(steps) - 1:
                 ctk.CTkFrame(sb_frame, height=1, fg_color="#E9ECEF", width=40).pack(side="left", fill="x", expand=True, padx=10)
 
-    def add_mock_row(self, parent, r, pid, risk, trust, status, bg, tc):
+    def add_mock_row(self, parent, r, pid, risk, trust,profile, status, bg, tc):
         ctk.CTkLabel(parent, text=pid, font=ctk.CTkFont(size=12, weight="bold"), text_color="#212529").grid(row=r, column=0, sticky="w", pady=6)
         ctk.CTkLabel(parent, text=risk, font=ctk.CTkFont(size=12), text_color="#495057").grid(row=r, column=1, sticky="w", pady=6)
         ctk.CTkLabel(parent, text=trust, font=ctk.CTkFont(size=12), text_color="#495057").grid(row=r, column=2, sticky="w", pady=6)
-        ctk.CTkLabel(parent, text=status, width=110, height=20, corner_radius=10, fg_color=bg, text_color=tc, font=ctk.CTkFont(size=10, weight="bold")).grid(row=r, column=3, sticky="e", pady=6)
+        ctk.CTkLabel(parent, text=profile, font=ctk.CTkFont(size=12), text_color="#495057").grid(row=r, column=3, sticky="w", pady=6)
+        ctk.CTkLabel(parent, text=status, width=110, height=20, corner_radius=10, fg_color=bg, text_color=tc, font=ctk.CTkFont(size=10, weight="bold")).grid(row=r, column=4, sticky="e", pady=6)
 
     def setup_data_input_section(self, frame):
         
