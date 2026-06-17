@@ -631,10 +631,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.session_status_lbl = session_row.winfo_children()[-1]  # keep a ref
 
         self.config_card = ctk.CTkFrame(session_card, fg_color="#F8F9FA", border_color="#E9ECEF", border_width=1, corner_radius=8)
-        ctk.CTkLabel(self.config_card, text="⚙ Saved Configuration", font=ctk.CTkFont(size=12, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=12, pady=(10, 4))
-        self.config_grid = ctk.CTkFrame(self.config_card, fg_color="transparent")
-        self.config_grid.pack(fill="x", padx=12, pady=(0, 10))
-        self.config_grid.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="cfg")
+        self._build_config_section(self.config_card)     
         self.viz_container = ctk.CTkFrame(self, fg_color="transparent")
         cards_frame = ctk.CTkFrame(self.viz_container, fg_color="transparent")
         cards_frame.pack(fill="x", pady=(0, 20))
@@ -752,6 +749,56 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.fig_tree, self.ax_tree = plt.subplots(figsize=(4.5, 2.8), dpi=100)
         self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_card)
         self.canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
+
+    def _build_config_section(self, parent):
+        _, body = self._make_collapsible(
+            parent,
+            "⚙ Saved Configuration",
+            "",
+            "#000000"
+        )
+        # ctk.CTkLabel(self.config_card, text="⚙ Saved Configuration", font=ctk.CTkFont(size=12, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=12, pady=(10, 4))
+        self.config_grid = ctk.CTkFrame(body, fg_color="transparent")
+        self.config_grid.pack(fill="x", padx=0, pady=(0, 0))
+        self.config_grid.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="cfg")
+    def _make_collapsible(self, parent, title, subtitle, accent):
+            """Returns (outer_frame, body_frame, toggle_state_dict).
+            Clicking the header toggles body_frame visibility."""
+            state = {"open": False}
+
+            header = ctk.CTkFrame(parent, fg_color="transparent")
+            header.pack(fill="x", padx=10, pady=8)
+
+            indicator = ctk.CTkLabel(header, text="▶", font=ctk.CTkFont(size=11),
+                                    text_color="#6C757D", width=14)
+            indicator.pack(side="left", padx=(0, 6))
+
+            title_block = ctk.CTkFrame(header, fg_color="transparent")
+            title_block.pack(side="left", fill="x", expand=True)
+            ctk.CTkLabel(title_block, text=title, font=ctk.CTkFont(size=12, weight="bold"),
+                        text_color=accent).pack(anchor="w")
+            # ctk.CTkLabel(title_block, text=subtitle, font=ctk.CTkFont(size=10),
+            #             text_color="#6C757D").pack(anchor="w")
+
+            body = ctk.CTkFrame(parent, fg_color="transparent")
+            # body is NOT packed yet — starts collapsed
+
+            def toggle(e=None):
+                if state["open"]:
+                    body.pack_forget()
+                    indicator.configure(text="▶")
+                    state["open"] = False
+                else:
+                    body.pack(fill="x", padx=10, pady=(0, 10))
+                    indicator.configure(text="▼")
+                    state["open"] = True
+
+            for widget in (header, indicator, title_block):
+                widget.bind("<Button-1>", toggle)
+            for child in title_block.winfo_children():
+                child.bind("<Button-1>", toggle)
+
+            return parent, body
     def on_metric_selected(self, selected_metric: str):
         config = self.metric_data[selected_metric]
         target_dr = config["optimal_dr"]
@@ -846,20 +893,6 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.ax_tree.set_position(self.ax_tree.get_subplotspec().get_position(self.fig_tree))
         self.draw_mdr()
         self.draw_tree()
-        # table_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
-        # table_card.pack(fill="x", pady=(0, 20))
-        # ctk.CTkLabel(table_card, text="👤 Patient-level predictions", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
-        
-        # self.table_frame = ctk.CTkFrame(table_card, fg_color="transparent")
-        # self.table_frame.pack(fill="x", padx=15, pady=(0, 15))
-        # self.table_frame.grid_columnconfigure((0,1,2,3,4), weight=1, uniform="table")
-
-        # for idx, header in enumerate(["Patient", "BaseModel pred.", "MPC confidence", "Profile", "Recommendation"]):
-        #     ctk.CTkLabel(self.table_frame, text=header, font=ctk.CTkFont(size=11, weight="bold"), text_color="#6C757D").grid(row=0, column=idx, sticky="w" if idx < 4 else "e", pady=5)
-
-        # self.add_pt_row(1, "Pt. 1", "Positive", "0.28", "BUN 25–31", "Reject", "#FAECE7", "#993C1D")
-        # self.add_pt_row(2, "Pt. 2", "Positive", "0.55", "GCS < 7.5", "Caution", "#FAEEDA", "#854F0B")
-        # self.add_pt_row(3, "Pt. 3", "Negative", "0.91", "BUN ≤ 25.5", "Accept", "#EAF3DE", "#3B6D11")
 
     def draw_step_bar(self):
         sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
