@@ -621,7 +621,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.session_var = ctk.StringVar(value="")
         self.session_combo = ctk.CTkComboBox(
             session_row,
-            values=["— select a session —"],
+            values=["— select a session —","default"],
             variable=self.session_var,
             command=self.on_session_selected,
             width=320, height=32
@@ -674,9 +674,16 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         slider_card = ctk.CTkFrame(self.viz_container, fg_color="#F8F9FA", border_color="#E9ECEF", border_width=1, corner_radius=8)
         slider_card.pack(fill="x", pady=(0, 20))
         
-        self.slider_label = ctk.CTkLabel(slider_card, text=f"🎯 Active Declaration Rate (DR) Threshold: {int(self.current_dr)}%", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5")
-        self.slider_label.pack(anchor="w", padx=15, pady=(10, 2))
-        
+        slider_header = ctk.CTkFrame(slider_card, fg_color="transparent")
+        slider_header.pack(fill="x", padx=15, pady=(10, 2))
+        self.slider_label = ctk.CTkLabel(slider_header, text=f"🎯 Active Declaration Rate (DR) Threshold: {int(self.current_dr)}%", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5")
+        self.slider_label.pack(side="left")
+        self.dr_entry = ctk.CTkEntry(slider_header, width=70, height=26, justify="center", font=ctk.CTkFont(size=12))
+        self.dr_entry.insert(0, str(int(self.current_dr)))
+        self.dr_entry.pack(side="left", padx=(8, 0))
+        self.dr_entry.bind("<Return>", self.on_dr_entry)
+        self.dr_entry.bind("<FocusOut>", self.on_dr_entry)
+
         self.slider_dr = ctk.CTkSlider(slider_card, from_=50, to=100, number_of_steps=50, height=16, command=self.on_slider_move)
         self.slider_dr.set(self.current_dr)
         self.slider_dr.pack(fill="x", padx=15, pady=(2, 12))
@@ -749,7 +756,14 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.fig_tree, self.ax_tree = plt.subplots(figsize=(4.5, 2.8), dpi=100)
         self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_card)
         self.canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
-
+    def on_dr_entry(self, event=None):
+        try:
+            value = float(self.dr_entry.get())
+        except ValueError:
+            value = self.current_dr            
+        value = max(50.0, min(100.0, value))  
+        self.slider_dr.set(value)              
+        self.on_slider_move(value)
     def _build_config_section(self, parent):
         _, body = self._make_collapsible(
             parent,
@@ -1091,6 +1105,9 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
     def on_slider_move(self, value):
         self.current_dr = float(value)
         self.slider_label.configure(text=f"🎯 Active Declaration Rate (DR) Threshold: {int(self.current_dr)}%")
+        if hasattr(self, 'dr_entry'):
+            self.dr_entry.delete(0, "end")
+            self.dr_entry.insert(0, str(int(self.current_dr)))
         if hasattr(self, 'cbar') and self.cbar is not None:
             try:
                 self.cbar.remove()
@@ -1660,7 +1677,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         ctk.CTkButton(csv_control_frame, text="📂 Browse CSV...", command=self.select_csv_file, width=140, fg_color="#495057", hover_color="#343A40").pack(side="left", padx=(0, 15))
         ctk.CTkLabel(csv_control_frame, textvariable=self.csv_path_var, font=ctk.CTkFont(size=12, slant="italic"), text_color="#6C757D").pack(side="left")
 
-        ctk.CTkButton(batch_tab, text="▶ Run Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=30)
+        ctk.CTkButton(batch_tab, text="▶ Apply Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=30)
 
         # --- SINGLE PATIENT TAB ---
         manual_tab = self.tabs.tab("Single Patient (Manual Entry)")
