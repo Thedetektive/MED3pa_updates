@@ -1287,16 +1287,16 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             size_a  = 8 if hn == "node_a" else 7
             self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: {round(1240/4476*100,2)} %\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=size_a, bbox=style_a)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
-            self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
+            # self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
         else:
             self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: {round(1240/4476*100,2)} %\nConf: High", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
-            self.ax_tree.text(31, 74, "True", size=7, color="#A9A9A9", weight="bold", alpha=0.2)
+            # self.ax_tree.text(31, 74, "True", size=7, color="#A9A9A9", weight="bold", alpha=0.2)
 
         # Layer 2: Node B (Always visible)
         self.ax_tree.text(75, 54, f"Node B\nBUN > 25.5\nSize: {round(3236/4476*100,2)} %\n % left: {int((60 -(100-self.current_dr))/60*100)}", ha='center', va='center', size=7, bbox=box_root)
         self.ax_tree.annotate("", xy=(75, 65), xytext=(55, 80), arrowprops=arrow_style)
-        self.ax_tree.text(64, 74, "False", size=7, color="#D85A30", weight="bold")
+        # self.ax_tree.text(64, 74, "False", size=7, color="#D85A30", weight="bold")
 
         # Layer 3: Terminal Children from Node B
         if show_node_b1:
@@ -1528,16 +1528,16 @@ class ProfilesView(ctk.CTkScrollableFrame):
         if show_node_a:
             self.ax_tree.text(25, 54, "Node A\nBUN ≤ 25.5\nSize: 1,240 pts\nConf: High", ha='center', va='center', size=7, bbox=box_green)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
-            self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
+            # self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
         else:
             self.ax_tree.text(25, 54, "Node A\nBUN ≤ 25.5\nSize: 1,240 pts\nConf: High", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
             self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
-            self.ax_tree.text(31, 74, "True", size=7, color="#A9A9A9", weight="bold", alpha=0.2)
+            # self.ax_tree.text(31, 74, "True", size=7, color="#A9A9A9", weight="bold", alpha=0.2)
 
         # Layer 2: Node B (Always visible)
         self.ax_tree.text(75, 54, "Node B\nBUN > 25.5\nSize: 3,236 pts\nConf: Evaluate", ha='center', va='center', size=7, bbox=box_root)
         self.ax_tree.annotate("", xy=(75, 65), xytext=(55, 80), arrowprops=arrow_style)
-        self.ax_tree.text(64, 74, "False", size=7, color="#D85A30", weight="bold")
+        # self.ax_tree.text(64, 74, "False", size=7, color="#D85A30", weight="bold")
 
         # Layer 3: Terminal Children from Node B
         if show_node_b1:
@@ -1719,7 +1719,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         btn_frame = ctk.CTkFrame(manual_tab, fg_color="transparent")
         btn_frame.pack(fill="x", pady=15)
         ctk.CTkButton(btn_frame, text="▶ Apply Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold"),command=lambda: self.apply_model(table_frame)).pack(side="right", padx=10)
-        ctk.CTkButton(btn_frame, text="Clear Fields", fg_color="transparent", text_color="#D9534F", border_width=1, border_color="#D9534F", hover_color="#FDF2F2").pack(side="right", padx=10)
+        ctk.CTkButton(btn_frame, text="Clear Fields", fg_color="transparent", text_color="#D9534F", border_width=1, border_color="#D9534F", hover_color="#FDF2F2", command=self.clear_fields).pack(side="right", padx=10)
     def select_csv_file(self):
         filepath = filedialog.askopenfilename(
             title="Select Patient Data CSV",
@@ -1750,6 +1750,10 @@ class RunModelView(ctk.CTkScrollableFrame):
             self.controller.patient_entries[patient_id]["profile"],
             "Caution / Flag", "#FAEEDA", "#854F0B",
         )
+        self.clear_fields()
+    def clear_fields(self):
+        for ent in self.patient_entries.values():
+            ent.delete(0, "end")
         
 # ====================================================================
 # TAB 6: PATIENT LOOKUP
@@ -2232,8 +2236,8 @@ class PatientDetailView(ctk.CTkScrollableFrame):
         edge(73, 52, 58, 26, "node_b1")
         edge(73, 52, 90, 26, "node_b2")
 
-        self.ax_tree.text(36, 72, "True", size=7, color="#1D9E75", weight="bold", zorder=6)
-        self.ax_tree.text(63, 72, "False", size=7, color="#D85A30", weight="bold", zorder=6)
+        # self.ax_tree.text(36, 72, "True", size=7, color="#1D9E75", weight="bold", zorder=6)
+        # self.ax_tree.text(63, 72, "False", size=7, color="#D85A30", weight="bold", zorder=6)
 
         node(50, 88, "root", "All Cohorts\nAPC 0.74", 0.74)
         node(27, 54, "node_a", "BUN ≤ 25.5\nAPC 0.88", 0.88)
