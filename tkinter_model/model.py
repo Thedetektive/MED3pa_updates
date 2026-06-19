@@ -1607,6 +1607,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(left_col, text="⚡ Pipeline Configurations", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=12)
         
         ctk.CTkLabel(left_col, text="Select Model", font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=15)
+        self.controller.selected_model = ctk.StringVar(value="Breast Cancer Histopathology CNN Classifier (DR= 81%)")
         ctk.CTkComboBox(left_col, values=[
             "Breast Cancer Histopathology CNN Classifier (DR= 81%)",
             "Lung Nodule Malignancy Prediction Model (DR= 73%)",
@@ -1616,7 +1617,7 @@ class RunModelView(ctk.CTkScrollableFrame):
             "Multi-Omics Tumor Classification Model (DR= 65%)",
             "Radiogenomic Cancer Detection Pipeline (DR= 84%)",
             "Early Pancreatic Cancer Screening Predictor (DR= 71%)"
-        ], width=280, height=32).pack(anchor="w", padx=15, pady=(2, 12))
+        ], width=280, height=32, variable=self.controller.selected_model).pack(anchor="w", padx=15, pady=(2, 12))
         
         # RIGHT SIDE: STREAM PREVIEW MONITOR
         right_col = ctk.CTkFrame(grid_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
@@ -1718,7 +1719,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         btn_frame = ctk.CTkFrame(manual_tab, fg_color="transparent")
         btn_frame.pack(fill="x", pady=15)
         ctk.CTkButton(btn_frame, text="▶ Apply Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold"),command=lambda: self.apply_model(table_frame)).pack(side="right", padx=10)
-        ctk.CTkButton(btn_frame, text="Clear Fields", fg_color="transparent", text_color="#D9534F", border_width=1, border_color="#D9534F", hover_color="#FDF2F2", command=self.clear_fields).pack(side="right", padx=10)
+        ctk.CTkButton(btn_frame, text="Clear Fields", fg_color="transparent", text_color="#D9534F", border_width=1, border_color="#D9534F", hover_color="#FDF2F2").pack(side="right", padx=10)
     def select_csv_file(self):
         filepath = filedialog.askopenfilename(
             title="Select Patient Data CSV",
@@ -1749,12 +1750,7 @@ class RunModelView(ctk.CTkScrollableFrame):
             self.controller.patient_entries[patient_id]["profile"],
             "Caution / Flag", "#FAEEDA", "#854F0B",
         )
-        self.clear_fields()
-
-    def clear_fields(self):
-        for ent in self.patient_entries.values():
-            ent.delete(0, "end")
-
+        
 # ====================================================================
 # TAB 6: PATIENT LOOKUP
 # ====================================================================
@@ -1950,7 +1946,7 @@ class PatientDetailView(ctk.CTkScrollableFrame):
         kpi_frame = ctk.CTkFrame(self, fg_color="transparent")
         kpi_frame.pack(fill="x", pady=(0, 16))
         kpi_frame.grid_columnconfigure((0, 1, 2), weight=1, uniform="kpi")
-        self.kpi_base = self._make_kpi(kpi_frame, 0, "BaseModel Prediction")
+        self.kpi_base = self._make_kpi(kpi_frame, 0, "Selected BaseModel")
         self.kpi_conf = self._make_kpi(kpi_frame, 1, "MPC Confidence")
         self.kpi_profile = self._make_kpi(kpi_frame, 2, "APC Profile Membership")
 
@@ -2081,8 +2077,17 @@ class PatientDetailView(ctk.CTkScrollableFrame):
 
         risk_pct = int(round(d["risk_prob"] * 100))
         cls = "Positive" if d["positive"] else "Negative"
-        self.kpi_base["value"].configure(text=f"{risk_pct}%", text_color="#993C1D" if d["positive"] else "#3B6D11")
-        self.kpi_base["sub"].configure(text=f"Class: {cls} (threshold 50%)")
+        model_var = getattr(self.controller, "selected_model", None)
+        model_full = model_var.get() if model_var is not None else "—"
+        if "(DR=" in model_full:
+            model_name, _, dr_part = model_full.partition("(DR=")
+            model_name = model_name.strip()
+            dr_sub = "Declaration rate: " + dr_part.replace(")", "").strip()
+        else:
+            model_name = model_full
+            dr_sub = "BaseModel selected in Deployment"
+        self.kpi_base["value"].configure(text=model_name, font=ctk.CTkFont(size=13, weight="bold"), text_color="#212529")
+        self.kpi_base["sub"].configure(text=dr_sub)
 
         self.kpi_conf["value"].configure(text=f"{d['mpc']:.2f}")
         clears = d["mpc"] >= d["threshold"]
