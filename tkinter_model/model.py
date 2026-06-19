@@ -2164,6 +2164,14 @@ class PatientDetailView(ctk.CTkScrollableFrame):
                 ctk.CTkLabel(cell, text=str(data.get(key)), font=ctk.CTkFont(size=13, weight="bold"), text_color="#212529").pack(anchor="w", padx=8, pady=(0, 6))
 
     def draw_tree(self, leaf):
+        if hasattr(self, 'cbar') and self.cbar is not None:
+            try:
+                self.cbar.remove()
+            except Exception:
+                pass
+        self.cbar = None
+        self.ax_tree.set_subplotspec(plt.GridSpec(1, 1)[0, 0])
+        self.ax_tree.set_position(self.ax_tree.get_subplotspec().get_position(self.fig_tree))
         self.ax_tree.clear()
         self.fig_tree.patch.set_facecolor('#FFFFFF')
         self.ax_tree.set_facecolor('#FFFFFF')
