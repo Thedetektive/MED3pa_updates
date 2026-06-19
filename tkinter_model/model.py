@@ -1718,7 +1718,7 @@ class RunModelView(ctk.CTkScrollableFrame):
         btn_frame = ctk.CTkFrame(manual_tab, fg_color="transparent")
         btn_frame.pack(fill="x", pady=15)
         ctk.CTkButton(btn_frame, text="▶ Apply Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold"),command=lambda: self.apply_model(table_frame)).pack(side="right", padx=10)
-        ctk.CTkButton(btn_frame, text="Clear Fields", fg_color="transparent", text_color="#D9534F", border_width=1, border_color="#D9534F", hover_color="#FDF2F2").pack(side="right", padx=10)
+        ctk.CTkButton(btn_frame, text="Clear Fields", fg_color="transparent", text_color="#D9534F", border_width=1, border_color="#D9534F", hover_color="#FDF2F2", command=self.clear_fields).pack(side="right", padx=10)
     def select_csv_file(self):
         filepath = filedialog.askopenfilename(
             title="Select Patient Data CSV",
@@ -1749,7 +1749,12 @@ class RunModelView(ctk.CTkScrollableFrame):
             self.controller.patient_entries[patient_id]["profile"],
             "Caution / Flag", "#FAEEDA", "#854F0B",
         )
-        
+        self.clear_fields()
+
+    def clear_fields(self):
+        for ent in self.patient_entries.values():
+            ent.delete(0, "end")
+
 # ====================================================================
 # TAB 6: PATIENT LOOKUP
 # ====================================================================
