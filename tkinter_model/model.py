@@ -84,6 +84,7 @@ class MED3paApp(ctk.CTk):
         # self.frames["ProfilesView"] = ProfilesView(parent=self, controller=self)
         self.frames["RunView"] = RunModelView(parent=self, controller=self)
         self.frames["LookupView"] = LookupView(parent=self, controller=self)
+        self.frames["PatientDetailView"] = PatientDetailView(parent=self, controller=self)
         self.frames["HistoryView"] = HistoryView(parent=self, controller=self)
 
         # Default to Overview
@@ -118,6 +119,9 @@ class MED3paApp(ctk.CTk):
 
         active_frame = self.frames[page_name]
         active_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=0)
+
+        if page_name == "LookupView" and hasattr(active_frame, "render_patients"):
+            active_frame.render_patients()
         
         frame_to_btn = {
             "OverviewView": "Overview", "UploadView": "Upload data", 
@@ -1715,7 +1719,6 @@ class RunModelView(ctk.CTkScrollableFrame):
         btn_frame.pack(fill="x", pady=15)
         ctk.CTkButton(btn_frame, text="▶ Apply Model", fg_color="#0F6E56", hover_color="#0A4D3C", font=ctk.CTkFont(weight="bold"),command=lambda: self.apply_model(table_frame)).pack(side="right", padx=10)
         ctk.CTkButton(btn_frame, text="Clear Fields", fg_color="transparent", text_color="#D9534F", border_width=1, border_color="#D9534F", hover_color="#FDF2F2").pack(side="right", padx=10)
-
     def select_csv_file(self):
         filepath = filedialog.askopenfilename(
             title="Select Patient Data CSV",
@@ -1732,8 +1735,8 @@ class RunModelView(ctk.CTkScrollableFrame):
         for field in values:
             self.controller.patient_entries[patient_id][field] = values[field]
 
-        self.controller.patient_entries[patient_id]["base_model_risk"] = values["cpap"]
-        self.controller.patient_entries[patient_id]["med3pa_trust"] = float(values["vent"])
+        self.controller.patient_entries[patient_id]["base_model_risk"] = values["cpap"] + ("% Positive" if int(values["cpap"]) > 50 else "% Negative")
+        self.controller.patient_entries[patient_id]["med3pa_trust"] = str(float(values["vent"])) + (" (High)" if float(values["vent"])>60 else " (Low)")
         self.controller.patient_entries[patient_id]["profile"] = (
             "BUN ≤ 25.5" if float(values["bun_max"]) < 25.5 else "BUN > 25.5"
         )
@@ -1799,25 +1802,79 @@ class LookupView(ctk.CTkScrollableFrame):
                          font=ctk.CTkFont(size=13), text_color="#6C757D").pack(anchor="w", pady=20)
 
     def render_card(self, patient_id, data):
+        rec_reject = bool(data.get("routing_status"))
+        rec_text = "Reject (Manual Review)" if rec_reject else "Accept"
+        rec_color = "#993C1D" if rec_reject else "#0F6E56"
+
         result_card = ctk.CTkFrame(self.results_container, fg_color="#FFFFFF",
                                    border_color="#E9ECEF", border_width=1, corner_radius=8)
         result_card.pack(fill="x", pady=10)
 
         header = ctk.CTkFrame(result_card, fg_color="transparent")
-        header.pack(fill="x", padx=20, pady=20)
+        header.pack(fill="x", padx=20, pady=(20, 4))
         ctk.CTkLabel(header, text=patient_id, font=ctk.CTkFont(size=20, weight="bold"),
                      text_color="#212529").pack(side="left")
         ctk.CTkLabel(header, text=f"Admitted: {data.get('admitted', '—')}",
                      font=ctk.CTkFont(size=12), text_color="#6C757D").pack(side="right")
 
         details = ctk.CTkFrame(result_card, fg_color="transparent")
-        details.pack(fill="x", padx=20, pady=(0, 20))
+        details.pack(fill="x", padx=20, pady=(0, 8))
         details.grid_columnconfigure((0, 1, 2), weight=1)
 
         self.add_detail(details, 0, "Base Model Prediction", str(data.get("base_model_risk", "—")), "#993C1D")
         self.add_detail(details, 1, "MPC Confidence", str(data.get("med3pa_trust", "—")), "#993C1D")
-        self.add_detail(details, 2, "Action Recommendation",
-                        "Reject (Manual Review)" if data.get("routing_status") else "Accept", "#993C1D")
+        self.add_detail(details, 2, "Action Recommendation", rec_text, rec_color)
+
+        footer = ctk.CTkFrame(result_card, fg_color="transparent")
+        footer.pack(fill="x", padx=20, pady=(0, 14))
+        ctk.CTkLabel(footer, text=f"Profile: {data.get('profile', '—')}",
+                     font=ctk.CTkFont(size=12), text_color="#495057").pack(side="left")
+        open_hint = ctk.CTkLabel(footer, text="View full dashboard  →",
+                                 font=ctk.CTkFont(size=12, weight="bold"), text_color="#185FA5")
+        open_hint.pack(side="right")
+
+        default_border = "#E9ECEF"
+        hover_border = "#185FA5"
+
+        def on_enter(_e=None):
+            result_card.configure(border_color=hover_border, fg_color="#F8FBFF")
+
+        def on_leave(_e=None):
+            result_card.configure(border_color=default_border, fg_color="#FFFFFF")
+
+        def on_click(_e=None):
+            self.open_patient(patient_id)
+
+        clickable = [result_card, header, details, footer, open_hint]
+        for w in clickable:
+            w.bind("<Button-1>", on_click)
+            w.bind("<Enter>", on_enter)
+            w.bind("<Leave>", on_leave)
+            w.configure(cursor="hand2")
+        for container in (header, details, footer):
+            for child in container.winfo_children():
+                child.bind("<Button-1>", on_click)
+                child.bind("<Enter>", on_enter)
+                child.bind("<Leave>", on_leave)
+                try:
+                    child.configure(cursor="hand2")
+                except Exception:
+                    pass
+                for sub in child.winfo_children():
+                    sub.bind("<Button-1>", on_click)
+                    sub.bind("<Enter>", on_enter)
+                    sub.bind("<Leave>", on_leave)
+                    try:
+                        sub.configure(cursor="hand2")
+                    except Exception:
+                        pass
+
+    def open_patient(self, patient_id):
+        detail = self.controller.frames.get("PatientDetailView")
+        if detail is None:
+            return
+        detail.load_patient(patient_id)
+        self.controller.show_frame("PatientDetailView")
 
     def search_patient(self):
         query = self.search_entry.get().strip()
@@ -1828,6 +1885,355 @@ class LookupView(ctk.CTkScrollableFrame):
         f.grid(row=0, column=col, sticky="w")
         ctk.CTkLabel(f, text=title, font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w")
         ctk.CTkLabel(f, text=val, font=ctk.CTkFont(size=14, weight="bold"), text_color=color).pack(anchor="w")
+
+
+# ====================================================================
+# PATIENT DETAIL DASHBOARD
+# ====================================================================
+class PatientDetailView(ctk.CTkScrollableFrame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, fg_color="#FFFFFF", corner_radius=0)
+        self.controller = controller
+        self.patient_id = None
+        self.dr_threshold = 93
+
+        self.field_groups = [
+            ("Identifiers & Demographics", ["patient_id", "hospitalid", "age", "deceased", "admissiontype"]),
+            ("Comorbidity Flags", ["aids", "hem", "mets"]),
+            ("Respiratory & Neuro", ["pao2fio2", "cpap", "vent", "gcs_min", "uo"]),
+            ("Vitals (min / max)", ["hr_min", "hr_max", "sbp_min", "sbp_max", "tempc_min", "tempc_max"]),
+            ("Labs (min / max)", [
+                "bicarbonate_min", "bicarbonate_max", "bilirubin_min", "bilirubin_max",
+                "potassium_min", "potassium_max", "sodium_min", "sodium_max",
+                "bun_min", "bun_max", "wbc_min", "wbc_max",
+            ]),
+        ]
+
+        self.tree_nodes = [
+            ("root", "All Cohorts", "Root profile", 0.74),
+            ("node_a", "BUN ≤ 25.5", "High confidence", 0.88),
+            ("node_b", "BUN > 25.5", "Evaluate", 0.61),
+            ("node_b1", "BUN > 25.5 · GCS ≥ 10", "Moderate confidence", 0.57),
+            ("node_b2", "BUN > 25.5 · GCS < 7.5", "Low confidence", 0.34),
+        ]
+
+        top_bar = ctk.CTkFrame(self, fg_color="transparent", height=70)
+        top_bar.pack(fill="x", pady=(15, 10))
+        ctk.CTkButton(top_bar, text="←  Back to Lookup", fg_color="transparent",
+                      text_color="#185FA5", hover_color="#E6F1FB", width=140, height=34,
+                      anchor="w", command=lambda: controller.show_frame("LookupView")).pack(side="left")
+
+        self.title_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.title_frame.pack(fill="x", pady=(0, 4))
+        self.title_lbl = ctk.CTkLabel(self.title_frame, text="Patient", font=ctk.CTkFont(size=22, weight="bold"), text_color="#212529")
+        self.title_lbl.pack(side="left")
+        self.subtitle_lbl = ctk.CTkLabel(self.title_frame, text="", font=ctk.CTkFont(size=12), text_color="#6C757D")
+        self.subtitle_lbl.pack(side="left", padx=(12, 0), pady=(8, 0))
+
+        self.banner = ctk.CTkFrame(self, fg_color="#F8F9FA", corner_radius=8, height=64)
+        self.banner.pack(fill="x", pady=(6, 16))
+        self.banner.pack_propagate(False)
+        self.banner_icon = ctk.CTkLabel(self.banner, text="", font=ctk.CTkFont(size=24), width=44)
+        self.banner_icon.pack(side="left", padx=(16, 4))
+        banner_text_frame = ctk.CTkFrame(self.banner, fg_color="transparent")
+        banner_text_frame.pack(side="left", fill="y", pady=10)
+        self.banner_title = ctk.CTkLabel(banner_text_frame, text="", font=ctk.CTkFont(size=15, weight="bold"), text_color="#212529", anchor="w")
+        self.banner_title.pack(anchor="w")
+        self.banner_sub = ctk.CTkLabel(banner_text_frame, text="", font=ctk.CTkFont(size=12), text_color="#6C757D", anchor="w")
+        self.banner_sub.pack(anchor="w")
+
+        kpi_frame = ctk.CTkFrame(self, fg_color="transparent")
+        kpi_frame.pack(fill="x", pady=(0, 16))
+        kpi_frame.grid_columnconfigure((0, 1, 2), weight=1, uniform="kpi")
+        self.kpi_base = self._make_kpi(kpi_frame, 0, "BaseModel Prediction")
+        self.kpi_conf = self._make_kpi(kpi_frame, 1, "MPC Confidence")
+        self.kpi_profile = self._make_kpi(kpi_frame, 2, "APC Profile Membership")
+
+        mid = ctk.CTkFrame(self, fg_color="transparent")
+        mid.pack(fill="x", pady=(0, 16))
+        mid.grid_columnconfigure(0, weight=1, uniform="mid")
+        mid.grid_columnconfigure(1, weight=1, uniform="mid")
+
+        conf_card = ctk.CTkFrame(mid, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        conf_card.grid(row=0, column=0, padx=(0, 8), sticky="nsew")
+        ctk.CTkLabel(conf_card, text="🔎 Confidence Decomposition", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=(12, 2))
+        ctk.CTkLabel(conf_card, text="MPC = min(IPC, APC) · compared to the DR confidence threshold",
+                     font=ctk.CTkFont(size=11), text_color="#6C757D").pack(anchor="w", padx=15, pady=(0, 6))
+        self.conf_bars_frame = ctk.CTkFrame(conf_card, fg_color="transparent")
+        self.conf_bars_frame.pack(fill="x", padx=5, pady=(0, 12))
+
+        risk_card = ctk.CTkFrame(mid, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        risk_card.grid(row=0, column=1, padx=(8, 0), sticky="nsew")
+        ctk.CTkLabel(risk_card, text="🩺 BaseModel Output", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=(12, 2))
+        ctk.CTkLabel(risk_card, text="Predicted in-hospital mortality probability",
+                     font=ctk.CTkFont(size=11), text_color="#6C757D").pack(anchor="w", padx=15, pady=(0, 6))
+        self.risk_body = ctk.CTkFrame(risk_card, fg_color="transparent")
+        self.risk_body.pack(fill="both", expand=True, padx=15, pady=(0, 12))
+
+        tree_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        tree_card.pack(fill="x", pady=(0, 16))
+        ctk.CTkLabel(tree_card, text="🌿 APC Profile Tree — patient's profile highlighted",
+                     font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=(12, 0))
+        ctk.CTkLabel(tree_card, text="The highlighted leaf is the smallest profile containing this patient; its APC value is the profile-level confidence.",
+                     font=ctk.CTkFont(size=11), text_color="#6C757D").pack(anchor="w", padx=15, pady=(0, 4))
+        self.fig_tree, self.ax_tree = plt.subplots(figsize=(7.4, 3.0), dpi=100)
+        self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_card)
+        self.canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+        data_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        data_card.pack(fill="x", pady=(0, 20))
+        ctk.CTkLabel(data_card, text="📋 Clinical Data (manual entry)", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=(12, 6))
+        self.data_body = ctk.CTkFrame(data_card, fg_color="transparent")
+        self.data_body.pack(fill="x", padx=15, pady=(0, 14))
+
+    def _make_kpi(self, parent, col, title):
+        card = ctk.CTkFrame(parent, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8, height=104)
+        card.grid(row=0, column=col, padx=6, sticky="nsew")
+        card.pack_propagate(False)
+        ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", padx=12, pady=(12, 2))
+        val = ctk.CTkLabel(card, text="—", font=ctk.CTkFont(size=22, weight="bold"), text_color="#212529")
+        val.pack(anchor="w", padx=12)
+        sub = ctk.CTkLabel(card, text="", font=ctk.CTkFont(size=11), text_color="#6C757D")
+        sub.pack(anchor="w", padx=12, pady=(2, 10))
+        return {"value": val, "sub": sub}
+
+    def _to_float(self, raw, default=None):
+        try:
+            return float(str(raw).strip())
+        except (ValueError, TypeError):
+            return default
+
+    def _derive(self, data):
+        cpap = self._to_float(data.get("cpap"))
+        vent = self._to_float(data.get("vent"))
+        bun_max = self._to_float(data.get("bun_max"))
+        gcs = self._to_float(data.get("gcs_min"))
+
+        if cpap is not None:
+            risk_prob = max(0.0, min(1.0, cpap / 100.0))
+        else:
+            risk_prob = 0.5
+        positive = risk_prob >= 0.5
+
+        if vent is not None and vent > 1.0:
+            mpc = max(0.0, min(1.0, vent / 100.0))
+        elif vent is not None:
+            mpc = max(0.0, min(1.0, vent))
+        else:
+            mpc = 0.5
+
+        ipc = max(0.0, min(1.0, mpc + 0.12))
+        apc = max(0.0, min(1.0, mpc + 0.05 if mpc < 0.85 else mpc - 0.03))
+        mpc = min(ipc, apc)
+
+        if bun_max is not None and bun_max <= 25.5:
+            leaf = "node_a"
+        elif gcs is not None and gcs < 7.5:
+            leaf = "node_b2"
+        elif bun_max is not None and bun_max > 25.5:
+            leaf = "node_b1"
+        else:
+            leaf = "node_b1"
+
+        threshold = self.dr_threshold / 100.0 * 0.55 + 0.30
+        high_risk_profile = leaf == "node_b2"
+
+        if mpc < threshold:
+            rec = ("reject", "Reject — low confidence",
+                   "Predicted confidence is below the declaration-rate threshold; withhold the BaseModel prediction and review manually.")
+        elif high_risk_profile:
+            rec = ("caution", "Caution — high-risk profile",
+                   "Confidence clears the threshold, but this patient belongs to a profile the BaseModel handles poorly. Interpret with care.")
+        else:
+            rec = ("accept", "Accept — reliable prediction",
+                   "Confidence clears the declaration-rate threshold and the patient is not in a flagged profile.")
+
+        return {
+            "risk_prob": risk_prob, "positive": positive,
+            "ipc": ipc, "apc": apc, "mpc": mpc,
+            "leaf": leaf, "threshold": threshold, "rec": rec,
+        }
+
+    def load_patient(self, patient_id):
+        self.patient_id = patient_id
+        data = self.controller.patient_entries.get(patient_id, {})
+        d = self._derive(data)
+
+        self.title_lbl.configure(text=patient_id)
+        self.subtitle_lbl.configure(text=f"Admitted: {data.get('admitted', '—')}  ·  Profile: {data.get('profile', '—')}")
+
+        rec_kind, rec_title, rec_sub = d["rec"]
+        palette = {
+            "reject":  ("#FAECE7", "#993C1D", "⛔"),
+            "caution": ("#FAEEDA", "#854F0B", "⚠"),
+            "accept":  ("#EAF3DE", "#3B6D11", "✓"),
+        }
+        bg, fg, icon = palette[rec_kind]
+        self.banner.configure(fg_color=bg)
+        self.banner_icon.configure(text=icon, text_color=fg)
+        self.banner_title.configure(text=rec_title, text_color=fg)
+        self.banner_sub.configure(text=rec_sub, text_color=fg)
+
+        risk_pct = int(round(d["risk_prob"] * 100))
+        cls = "Positive" if d["positive"] else "Negative"
+        self.kpi_base["value"].configure(text=f"{risk_pct}%", text_color="#993C1D" if d["positive"] else "#3B6D11")
+        self.kpi_base["sub"].configure(text=f"Class: {cls} (threshold 50%)")
+
+        self.kpi_conf["value"].configure(text=f"{d['mpc']:.2f}")
+        clears = d["mpc"] >= d["threshold"]
+        self.kpi_conf["sub"].configure(
+            text=("Above" if clears else "Below") + f" DR threshold ({d['threshold']:.2f})",
+            text_color="#0F6E56" if clears else "#993C1D")
+
+        leaf_label = next((lbl for nid, lbl, _desc, _v in self.tree_nodes if nid == d["leaf"]), "—")
+        leaf_desc = next((desc for nid, _lbl, desc, _v in self.tree_nodes if nid == d["leaf"]), "")
+        self.kpi_profile["value"].configure(text=leaf_label, font=ctk.CTkFont(size=15, weight="bold"))
+        self.kpi_profile["sub"].configure(text=leaf_desc)
+
+        self._render_conf_bars(d)
+        self._render_risk(d)
+        self._render_data(data)
+        self.draw_tree(d["leaf"])
+
+    def _render_conf_bars(self, d):
+        for child in self.conf_bars_frame.winfo_children():
+            child.destroy()
+        rows = [
+            ("IPC", "Individualized", d["ipc"], "#378ADD"),
+            ("APC", "Profile-level", d["apc"], "#1D9E75"),
+            ("MPC", "Mixed (min)", d["mpc"], "#185FA5"),
+        ]
+        for name, desc, val, color in rows:
+            row = ctk.CTkFrame(self.conf_bars_frame, fg_color="transparent")
+            row.pack(fill="x", padx=10, pady=5)
+            label_row = ctk.CTkFrame(row, fg_color="transparent")
+            label_row.pack(fill="x")
+            ctk.CTkLabel(label_row, text=f"{name}", font=ctk.CTkFont(size=12, weight="bold"), text_color="#212529").pack(side="left")
+            ctk.CTkLabel(label_row, text=f"  {desc}", font=ctk.CTkFont(size=11), text_color="#6C757D").pack(side="left")
+            ctk.CTkLabel(label_row, text=f"{val:.2f}", font=ctk.CTkFont(size=12, weight="bold"), text_color=color).pack(side="right")
+            bar = ctk.CTkProgressBar(row, height=10, progress_color=color, fg_color="#E9ECEF")
+            bar.set(val)
+            bar.pack(fill="x", pady=(3, 0))
+        note = ctk.CTkFrame(self.conf_bars_frame, fg_color="transparent")
+        note.pack(fill="x", padx=10, pady=(6, 0))
+        ctk.CTkLabel(note, text=f"Declaration-rate threshold: {d['threshold']:.2f}",
+                     font=ctk.CTkFont(size=11, slant="italic"), text_color="#6C757D").pack(side="left")
+
+    def _render_risk(self, d):
+        for child in self.risk_body.winfo_children():
+            child.destroy()
+        risk_pct = int(round(d["risk_prob"] * 100))
+        color = "#993C1D" if d["positive"] else "#3B6D11"
+        ctk.CTkLabel(self.risk_body, text=f"{risk_pct}%", font=ctk.CTkFont(size=40, weight="bold"), text_color=color).pack(anchor="w")
+        ctk.CTkLabel(self.risk_body, text=("Positive" if d["positive"] else "Negative") + " — predicted mortality",
+                     font=ctk.CTkFont(size=13, weight="bold"), text_color=color).pack(anchor="w", pady=(0, 8))
+        bar = ctk.CTkProgressBar(self.risk_body, height=12, progress_color=color, fg_color="#E9ECEF")
+        bar.set(d["risk_prob"])
+        bar.pack(fill="x", pady=(0, 6))
+        scale = ctk.CTkFrame(self.risk_body, fg_color="transparent")
+        scale.pack(fill="x")
+        ctk.CTkLabel(scale, text="0%", font=ctk.CTkFont(size=10), text_color="#ADB5BD").pack(side="left")
+        ctk.CTkLabel(scale, text="decision threshold 50%", font=ctk.CTkFont(size=10), text_color="#ADB5BD").pack(side="left", expand=True)
+        ctk.CTkLabel(scale, text="100%", font=ctk.CTkFont(size=10), text_color="#ADB5BD").pack(side="right")
+
+    def _render_data(self, data):
+        for child in self.data_body.winfo_children():
+            child.destroy()
+        any_value = any(str(data.get(k, "")).strip() for _t, keys in self.field_groups for k in keys)
+        if not any_value:
+            ctk.CTkLabel(self.data_body, text="No manual-entry clinical data recorded for this patient.",
+                         font=ctk.CTkFont(size=12), text_color="#6C757D").pack(anchor="w", pady=8)
+            return
+        for group_title, keys in self.field_groups:
+            present = [k for k in keys if str(data.get(k, "")).strip()]
+            if not present:
+                continue
+            ctk.CTkLabel(self.data_body, text=group_title.upper(), font=ctk.CTkFont(size=11, weight="bold"),
+                         text_color="#185FA5").pack(anchor="w", pady=(10, 4))
+            grid = ctk.CTkFrame(self.data_body, fg_color="transparent")
+            grid.pack(fill="x")
+            for i in range(4):
+                grid.grid_columnconfigure(i, weight=1, uniform="dcol")
+            for idx, key in enumerate(present):
+                row = (idx // 4) * 1
+                col = idx % 4
+                cell = ctk.CTkFrame(grid, fg_color="#F8F9FA", corner_radius=6)
+                cell.grid(row=row, column=col, sticky="ew", padx=4, pady=4)
+                label = key.replace("_", " ").title()
+                ctk.CTkLabel(cell, text=label, font=ctk.CTkFont(size=10), text_color="#6C757D").pack(anchor="w", padx=8, pady=(6, 0))
+                ctk.CTkLabel(cell, text=str(data.get(key)), font=ctk.CTkFont(size=13, weight="bold"), text_color="#212529").pack(anchor="w", padx=8, pady=(0, 6))
+
+    def draw_tree(self, leaf):
+        self.ax_tree.clear()
+        self.fig_tree.patch.set_facecolor('#FFFFFF')
+        self.ax_tree.set_facecolor('#FFFFFF')
+        self.ax_tree.axis('off')
+        self.ax_tree.set_xlim(0, 100)
+        self.ax_tree.set_ylim(0, 100)
+
+        path = {
+            "node_a": {"root", "node_a"},
+            "node_b1": {"root", "node_b", "node_b1"},
+            "node_b2": {"root", "node_b", "node_b2"},
+        }.get(leaf, {"root"})
+
+        arrow_active = dict(arrowstyle="->", color="#185FA5", lw=2.0)
+        arrow_idle = dict(arrowstyle="->", color="#CED4DA", lw=1.2)
+
+        def edge(x1, y1, x2, y2, child):
+            self.ax_tree.annotate("", xy=(x2, y2), xytext=(x1, y1),
+                                  arrowprops=arrow_active if child in path else arrow_idle)
+
+        def node(x, y, nid, lines, conf):
+            on_path = nid in path
+            is_leaf = nid == leaf
+            base_face = plt.cm.RdYlGn(conf)
+            if is_leaf:
+                face = base_face
+                edgecolor = "#185FA5"
+                lw = 3.2
+                alpha = 1.0
+                text_color = "#10243A"
+            elif on_path:
+                face = base_face
+                edgecolor = "#185FA5"
+                lw = 1.6
+                alpha = 0.95
+                text_color = "#212529"
+            else:
+                face = "#F2F4F4"
+                edgecolor = "#CED4DA"
+                lw = 1.0
+                alpha = 0.45
+                text_color = "#6C757D"
+            box = dict(boxstyle="round,pad=0.5", facecolor=face, edgecolor=edgecolor, lw=lw, alpha=alpha)
+            self.ax_tree.text(x, y, lines, ha='center', va='center', size=8, bbox=box, color=text_color, zorder=5)
+
+        edge(50, 82, 27, 60, "node_a")
+        edge(50, 82, 73, 60, "node_b")
+        edge(73, 52, 58, 26, "node_b1")
+        edge(73, 52, 90, 26, "node_b2")
+
+        self.ax_tree.text(36, 72, "True", size=7, color="#1D9E75", weight="bold", zorder=6)
+        self.ax_tree.text(63, 72, "False", size=7, color="#D85A30", weight="bold", zorder=6)
+
+        node(50, 88, "root", "All Cohorts\nAPC 0.74", 0.74)
+        node(27, 54, "node_a", "BUN ≤ 25.5\nAPC 0.88", 0.88)
+        node(73, 54, "node_b", "BUN > 25.5\nAPC 0.61", 0.61)
+        node(58, 18, "node_b1", "GCS ≥ 10\nAPC 0.57", 0.57)
+        node(90, 18, "node_b2", "GCS < 7.5\nAPC 0.34", 0.34)
+
+        sm = plt.cm.ScalarMappable(cmap=plt.cm.RdYlGn, norm=plt.Normalize(vmin=0, vmax=1))
+        sm.set_array([])
+        cbar = self.fig_tree.colorbar(sm, ax=self.ax_tree, shrink=0.6)
+        cbar.set_label("APC confidence", fontsize=8)
+        cbar.ax.tick_params(labelsize=7)
+        cbar.outline.set_edgecolor('#E9ECEF')
+
+        self.fig_tree.tight_layout()
+        self.canvas_tree.draw()
+
+
 # ====================================================================
 # TAB 7: SESSION HISTORY
 # ====================================================================
