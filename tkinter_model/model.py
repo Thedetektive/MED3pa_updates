@@ -799,6 +799,17 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         )
         self.tree_density_combo.pack(side="left")
         self.tree_density_combos = [self.tree_density_combo]
+
+        display_panel = ctk.CTkFrame(tree_card, fg_color="transparent")
+        display_panel.pack(fill="x", padx=15, pady=(0, 2))
+        ctk.CTkLabel(display_panel, text="Show on nodes", font=ctk.CTkFont(size=11), text_color="#6C757D").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
+        self.tree_node_metrics = ["APC Confidence", "AUC", "Sensitivity", "Specificity", "NPV", "PPV"]
+        self.tree_metric_display = {}
+        for i, m in enumerate(self.tree_node_metrics):
+            var = ctk.BooleanVar(value=(m == "APC Confidence"))
+            self.tree_metric_display[m] = var
+            ctk.CTkCheckBox(display_panel, text=m, variable=var, font=ctk.CTkFont(size=10), text_color="#212529", checkbox_width=14, checkbox_height=14, command=self.draw_tree).grid(row=1 + i // 3, column=i % 3, sticky="w", padx=(0, 8), pady=1)
+
         self.fs_window = None
         self.fs_canvas_tree = None
         self.fs_cbar = None
@@ -1328,7 +1339,8 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
                     box["lw"] = 3.0
                     box["edgecolor"] = "#212529"
                 size = node_size + 1 if hn == nid else node_size
-                label = f"{node['title']}\n{node['rule']}\n{metric_name}: {value:.2f}"
+                metric_lines = "\n".join(f"{m}: {node['metrics'][m]:.2f}" for m in self.tree_node_metrics if self.tree_metric_display[m].get())
+                label = f"{node['title']}\n{node['rule']}" + (f"\n{metric_lines}" if metric_lines else "")
                 ax.text(cx, cy, label, ha='center', va='center', size=size, color=txt, bbox=box)
             else:
                 ax.text(cx, cy, f"{node['title']}\n{node['rule']}\n(faded)", ha='center', va='center', size=node_size, bbox=box_grey, alpha=0.2)
