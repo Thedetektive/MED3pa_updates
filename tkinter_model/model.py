@@ -742,25 +742,65 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         tree_card.grid(row=0, column=2, padx=(0, 0), sticky="nsew")
         ctk.CTkLabel(tree_card, text="🌿 APC Hierarchical Decision Tree (Fades when DR drops)", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
 
-        self.tree_density_metrics = {
-            "APC Confidence":  {"cmap": cm.RdYlGn,  "root": ("#FCF7E0", "#E0B500"), "green": ("#EAF3DE", "#1D9E75"), "orange": ("#FAECE7", "#D85A30")},
-            "Sensitivity":     {"cmap": cm.PuBu,    "root": ("#EDF4FA", "#4D9AC9"), "green": ("#E3EEF6", "#2C7FB8"), "orange": ("#D4E4F0", "#08519C")},
-            "Specificity":     {"cmap": cm.BuPu,    "root": ("#F2EDF7", "#9E7BC0"), "green": ("#ECE7F2", "#8856A7"), "orange": ("#E0D6EB", "#54278F")},
-            "NPV":             {"cmap": cm.YlOrBr,  "root": ("#FFF9E8", "#E0AE2E"), "green": ("#FFF4D6", "#D9930A"), "orange": ("#FCE3B4", "#A6660A")},
+        self.tree_metric_families = {
+            "Confidence": ["APC Confidence", "IPC Confidence", "MPC Confidence"],
+            "Base-model": ["AUC", "Sensitivity", "Specificity", "NPV", "PPV"],
         }
+        self.tree_metric_cmaps = {
+            "APC Confidence": cm.RdYlGn, "IPC Confidence": cm.RdYlGn, "MPC Confidence": cm.RdYlGn,
+            "AUC": cm.PuBu, "Sensitivity": cm.PuBu, "Specificity": cm.PuBu, "NPV": cm.PuBu, "PPV": cm.PuBu,
+        }
+        self.tree_total = 4476
+        self.tree_node_data = {
+            "root":    {"title": "All Cohorts", "rule": "root", "center": (50, 88), "size": 4476, "cap": None, "conf": "—",
+                        "metrics": {"APC Confidence": 0.74, "IPC Confidence": 0.72, "MPC Confidence": 0.71, "AUC": 0.80, "Sensitivity": 0.81, "Specificity": 0.58, "NPV": 0.89, "PPV": 0.42}},
+            "node_a":  {"title": "Node A", "rule": "BUN ≤ 25.5", "center": (25, 54), "size": 1240, "cap": 40, "conf": "High",
+                        "metrics": {"APC Confidence": 0.86, "IPC Confidence": 0.88, "MPC Confidence": 0.85, "AUC": 0.80, "Sensitivity": 0.47, "Specificity": 0.89, "NPV": 0.92, "PPV": 0.36}},
+            "node_b":  {"title": "Node B", "rule": "BUN > 25.5", "center": (75, 54), "size": 3236, "cap": 60, "conf": "Mod",
+                        "metrics": {"APC Confidence": 0.61, "IPC Confidence": 0.63, "MPC Confidence": 0.60, "AUC": 0.71, "Sensitivity": 0.66, "Specificity": 0.65, "NPV": 0.45, "PPV": 0.66}},
+            "node_b1": {"title": "Node B1", "rule": "GCS ≥ 10", "center": (60, 18), "size": 2145, "cap": 22, "conf": "Mod",
+                        "metrics": {"APC Confidence": 0.58, "IPC Confidence": 0.60, "MPC Confidence": 0.57, "AUC": 0.74, "Sensitivity": 0.62, "Specificity": 0.80, "NPV": 0.85, "PPV": 0.40}},
+            "node_b2": {"title": "Node B2", "rule": "GCS < 7.5", "center": (90, 18), "size": 1091, "cap": 8, "conf": "Low",
+                        "metrics": {"APC Confidence": 0.34, "IPC Confidence": 0.37, "MPC Confidence": 0.33, "AUC": 0.70, "Sensitivity": 0.69, "Specificity": 0.59, "NPV": 0.79, "PPV": 0.45}},
+        }
+        self.tree_edges = [
+            ("node_a", (25, 65), (45, 80)),
+            ("node_b", (75, 65), (55, 80)),
+            ("node_b1", (60, 30), (70, 44)),
+            ("node_b2", (90, 30), (80, 44)),
+        ]
+
+        selector_row = ctk.CTkFrame(tree_card, fg_color="transparent")
+        selector_row.pack(fill="x", padx=15, pady=(0, 2))
+        self.tree_family_var = ctk.StringVar(value="Confidence")
+        ctk.CTkSegmentedButton(
+            selector_row,
+            values=list(self.tree_metric_families.keys()),
+            variable=self.tree_family_var,
+            command=self.on_tree_family_selected,
+            font=ctk.CTkFont(size=11),
+            height=26,
+        ).pack(side="left")
+
+        combo_row = ctk.CTkFrame(tree_card, fg_color="transparent")
+        combo_row.pack(fill="x", padx=15, pady=(0, 2))
+        ctk.CTkLabel(combo_row, text="Color by", font=ctk.CTkFont(size=11), text_color="#6C757D").pack(side="left", padx=(0, 6))
         self.tree_density_var = ctk.StringVar(value="APC Confidence")
-        ctk.CTkComboBox(
-            tree_card,
-            values=list(self.tree_density_metrics.keys()),
+        self.tree_density_combo = ctk.CTkComboBox(
+            combo_row,
+            values=self.tree_metric_families["Confidence"],
             variable=self.tree_density_var,
             command=lambda _v: self.draw_tree(),
-            width=180, height=26,
-            font=ctk.CTkFont(size=11)
-        ).pack(anchor="w", padx=15, pady=(0, 4))
+            width=160, height=26,
+            font=ctk.CTkFont(size=11),
+        )
+        self.tree_density_combo.pack(side="left")
+        ctk.CTkLabel(tree_card, text="Tip: click a node for full per-node metrics", font=ctk.CTkFont(size=10), text_color="#6C757D").pack(anchor="w", padx=15, pady=(0, 2))
 
         self.fig_tree, self.ax_tree = plt.subplots(figsize=(4.5, 2.8), dpi=100)
         self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_card)
         self.canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 5))
+        self.fig_tree.canvas.mpl_connect("button_press_event", self._on_tree_click)
     def on_dr_entry(self, event=None):
         try:
             value = float(self.dr_entry.get())
@@ -1234,7 +1274,16 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             self.highlighted_node = None
             self.draw_tree()
 
+    def _tree_visibility(self):
+        return {
+            "root": True, "node_b": True,
+            "node_a": self.current_dr >= 60.0,
+            "node_b1": self.current_dr >= 78.0,
+            "node_b2": self.current_dr >= 92.0,
+        }
+
     def draw_tree(self):
+        import matplotlib.colors as mcolors
         if hasattr(self, 'cbar') and self.cbar is not None:
             try:
                 self.cbar.remove()
@@ -1250,84 +1299,135 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.ax_tree.set_xlim(0, 100)
         self.ax_tree.set_ylim(0, 100)
 
-        density_name = self.tree_density_var.get()
-        density_cfg = self.tree_density_metrics[density_name]
-        green_face, green_edge = density_cfg["green"]
-        orange_face, orange_edge = density_cfg["orange"]
-        root_face, root_edge = density_cfg["root"]
-
-        # Base structure styles
-        box_root   = dict(boxstyle="round,pad=0.4", facecolor=root_face, edgecolor=root_edge, lw=1.5)
-        box_green  = dict(boxstyle="round,pad=0.4", facecolor=green_face, edgecolor=green_edge, lw=1)
-        box_grey   = dict(boxstyle="round,pad=0.4", facecolor="#F2F4F4", edgecolor="#A9A9A9", lw=1, alpha=0.2)
-        box_orange = dict(boxstyle="round,pad=0.4", facecolor=orange_face, edgecolor=orange_edge, lw=1)
+        metric_name = self.tree_density_var.get()
+        cmap = self.tree_metric_cmaps[metric_name]
         arrow_style = dict(arrowstyle="->", color="#ADB5BD", lw=1.5)
+        box_grey = dict(boxstyle="round,pad=0.4", facecolor="#F2F4F4", edgecolor="#A9A9A9", lw=1, alpha=0.2)
+        hn = self.highlighted_node
 
-        # Returns a bold highlighted version of any box style
-        def hl(base, glow_color):
-            h = dict(base)
-            h["lw"] = 3.0
-            h["edgecolor"] = glow_color
-            h.pop("alpha", None)  # remove fade if present
-            return h
+        def styled_box(value):
+            v = max(0.0, min(1.0, value))
+            rgba = cmap(0.12 + 0.76 * v)
+            face = mcolors.to_hex(rgba)
+            edge = mcolors.to_hex(cmap(min(1.0, 0.45 + 0.55 * v)))
+            lum = 0.299 * rgba[0] + 0.587 * rgba[1] + 0.114 * rgba[2]
+            txt = "#212529" if lum > 0.6 else "#FFFFFF"
+            return dict(boxstyle="round,pad=0.4", facecolor=face, edgecolor=edge, lw=1.2), txt
 
-        hn = self.highlighted_node  # shorthand
+        for nid, xy, xytext in self.tree_edges:
+            self.ax_tree.annotate("", xy=xy, xytext=xytext, arrowprops=arrow_style)
 
-        # Dynamic visibility checkpoints configured against DR
-        show_node_a = self.current_dr >= 60.0
-        show_node_b1 = self.current_dr >= 78.0
-        show_node_b2 = self.current_dr >= 92.0
+        visibility = self._tree_visibility()
+        for nid, node in self.tree_node_data.items():
+            cx, cy = node["center"]
+            value = node["metrics"][metric_name]
+            if visibility[nid]:
+                box, txt = styled_box(value)
+                if hn == nid:
+                    box = dict(box)
+                    box["lw"] = 3.0
+                    box["edgecolor"] = "#212529"
+                size = 8 if hn == nid else 7
+                label = f"{node['title']}\n{node['rule']}\n{metric_name}: {value:.2f}"
+                self.ax_tree.text(cx, cy, label, ha='center', va='center', size=size, color=txt, bbox=box)
+            else:
+                self.ax_tree.text(cx, cy, f"{node['title']}\n{node['rule']}\n(faded)", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
 
-        # Layer 1: Root Node (Always visible)
-        self.ax_tree.text(50, 88, f"All Cohorts\nDR = {int(self.current_dr)}%\nAUC: 0.80", ha='center', va='center', size=8, bbox=box_root)
-
-        # Layer 2: Node A
-        if show_node_a:
-            style_a = hl(box_green, green_edge) if hn == "node_a" else box_green
-            size_a  = 8 if hn == "node_a" else 7
-            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: {round(1240/4476*100,2)} %\n % left: {int((40 -(100-self.current_dr))/40*100)}", ha='center', va='center', size=size_a, bbox=style_a)
-            self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
-            # self.ax_tree.text(31, 74, "True", size=7, color="#1D9E75", weight="bold")
-        else:
-            self.ax_tree.text(25, 54, f"Node A\nBUN ≤ 25.5\nSize: {round(1240/4476*100,2)} %\nConf: High", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
-            self.ax_tree.annotate("", xy=(25, 65), xytext=(45, 80), arrowprops=arrow_style)
-            # self.ax_tree.text(31, 74, "True", size=7, color="#A9A9A9", weight="bold", alpha=0.2)
-
-        # Layer 2: Node B (Always visible)
-        self.ax_tree.text(75, 54, f"Node B\nBUN > 25.5\nSize: {round(3236/4476*100,2)} %\n % left: {int((60 -(100-self.current_dr))/60*100)}", ha='center', va='center', size=7, bbox=box_root)
-        self.ax_tree.annotate("", xy=(75, 65), xytext=(55, 80), arrowprops=arrow_style)
-        # self.ax_tree.text(64, 74, "False", size=7, color="#D85A30", weight="bold")
-
-        # Layer 3: Terminal Children from Node B
-        if show_node_b1:
-            style_b1 = hl(box_root, root_edge) if hn == "node_b1" else box_root
-            size_b1  = 8 if hn == "node_b1" else 7
-            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: {round(2145/4476*100,2)} %\n % left: {int((22 -(100-self.current_dr))/22*100)}", ha='center', va='center', size=size_b1, bbox=style_b1)
-            self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
-        else:
-            self.ax_tree.text(60, 18, f"Node B1\nGCS ≥ 10\nSize: {round(2145/4476*100,2)} %\nConf: Mod", ha='center', va='center', size=7, bbox=box_grey, alpha=.2)
-            self.ax_tree.annotate("", xy=(60, 30), xytext=(70, 44), arrowprops=arrow_style)
-
-        if show_node_b2:
-            style_b2 = hl(box_orange, orange_edge) if hn == "node_b2" else box_orange
-            size_b2  = 8 if hn == "node_b2" else 7
-            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: {round(1091/4476*100,2)} %\n % left: {int((8 -(100-self.current_dr))/8*100)}", ha='center', va='center', size=size_b2, bbox=style_b2)
-            self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
-        else:
-            self.ax_tree.text(90, 18, f"Node B2\nGCS < 7.5\nSize: {round(1091/4476*100,2)} %\nConf: Low", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
-            self.ax_tree.annotate("", xy=(90, 30), xytext=(80, 44), arrowprops=arrow_style)
-
-        sm = plt.cm.ScalarMappable(cmap=density_cfg["cmap"], norm=plt.Normalize(vmin=0, vmax=1))
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=1))
         sm.set_array([])
 
         self.cbar = plt.colorbar(sm, ax=self.ax_tree, shrink=0.6)
 
-        self.cbar.set_label(density_name, fontsize=8)
+        self.cbar.set_label(metric_name, fontsize=8)
         self.cbar.ax.tick_params(labelsize=7)
         self.cbar.outline.set_edgecolor('#E9ECEF')
 
         self.fig_tree.tight_layout()
         self.canvas_tree.draw()
+
+    def on_tree_family_selected(self, family):
+        metrics = self.tree_metric_families[family]
+        self.tree_density_combo.configure(values=metrics)
+        self.tree_density_var.set(metrics[0])
+        self.draw_tree()
+
+    def _on_tree_click(self, event):
+        if event.inaxes != self.ax_tree or event.xdata is None:
+            return
+        visibility = self._tree_visibility()
+        best, best_d = None, float('inf')
+        for nid, node in self.tree_node_data.items():
+            if not visibility[nid]:
+                continue
+            cx, cy = node["center"]
+            d = ((event.xdata - cx) ** 2 + (event.ydata - cy) ** 2) ** 0.5
+            if d < best_d:
+                best_d, best = d, nid
+        if best is not None and best_d < 12:
+            self.open_node_popup(best)
+
+    def open_node_popup(self, nid):
+        node = self.tree_node_data[nid]
+        conf_color = {"High": "#0F6E56", "Mod": "#BA7517", "Low": "#993C1D"}.get(node["conf"], "#185FA5")
+
+        popup = ctk.CTkToplevel(self)
+        popup.title(f"{node['title']} · {node['rule']}")
+        popup.resizable(False, False)
+        popup.transient(self)
+        popup.grab_set()
+
+        header = ctk.CTkFrame(popup, fg_color=conf_color, corner_radius=0, height=60)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+        ctk.CTkLabel(header, text=node["title"], font=ctk.CTkFont(size=16, weight="bold"), text_color="#FFFFFF").pack(anchor="w", padx=18, pady=(9, 0))
+        ctk.CTkLabel(header, text=f"Split rule:  {node['rule']}", font=ctk.CTkFont(size=12), text_color="#FFFFFF").pack(anchor="w", padx=18)
+
+        ctk.CTkButton(popup, text="Close", command=popup.destroy, width=120, fg_color="#185FA5", hover_color="#124A80").pack(side="bottom", pady=(6, 12))
+
+        body = ctk.CTkScrollableFrame(popup, fg_color="#FFFFFF")
+        body.pack(fill="both", expand=True)
+
+        info_row = ctk.CTkFrame(body, fg_color="#F8F9FA", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        info_row.pack(fill="x", padx=10, pady=(8, 6))
+        size_pct = node["size"] / self.tree_total * 100
+        if node["cap"]:
+            left = max(0, min(100, int((node["cap"] - (100 - self.current_dr)) / node["cap"] * 100)))
+            left_txt = f"{left}%"
+        else:
+            left_txt = "100%"
+        for col, (lbl, val) in enumerate([
+            ("Profile size", f"{size_pct:.1f}%"),
+            ("Patients", f"{node['size']:,}"),
+            (f"Retained @ DR {int(self.current_dr)}%", left_txt),
+            ("Confidence", node["conf"]),
+        ]):
+            cell = ctk.CTkFrame(info_row, fg_color="transparent")
+            cell.grid(row=0, column=col, padx=10, pady=8, sticky="w")
+            ctk.CTkLabel(cell, text=lbl, font=ctk.CTkFont(size=10), text_color="#6C757D").pack(anchor="w")
+            ctk.CTkLabel(cell, text=val, font=ctk.CTkFont(size=14, weight="bold"), text_color="#212529").pack(anchor="w")
+
+        conf_card = ctk.CTkFrame(body, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        conf_card.pack(fill="x", padx=10, pady=(4, 4))
+        ctk.CTkLabel(conf_card, text="● Predictive confidence", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=(8, 0))
+        ctk.CTkLabel(conf_card, text="How reliable MED3pa considers this profile", font=ctk.CTkFont(size=10), text_color="#6C757D").pack(anchor="w", padx=15)
+        for m in self.tree_metric_families["Confidence"]:
+            self.create_profile_row(conf_card, m, node["metrics"][m], "#185FA5")
+        ctk.CTkFrame(conf_card, height=4, fg_color="transparent").pack()
+
+        perf_card = ctk.CTkFrame(body, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
+        perf_card.pack(fill="x", padx=10, pady=(4, 8))
+        ctk.CTkLabel(perf_card, text="● Base-model performance", font=ctk.CTkFont(size=13, weight="bold"), text_color="#BA7517").pack(anchor="w", padx=15, pady=(8, 0))
+        ctk.CTkLabel(perf_card, text="BaseModel metrics computed within this profile", font=ctk.CTkFont(size=10), text_color="#6C757D").pack(anchor="w", padx=15)
+        perf_colors = {"AUC": "#378ADD", "Sensitivity": "#1D9E75", "Specificity": "#BA7517", "NPV": "#D85A30", "PPV": "#8E5BB5"}
+        for m in self.tree_metric_families["Base-model"]:
+            self.create_profile_row(perf_card, m, node["metrics"][m], perf_colors[m])
+        ctk.CTkFrame(perf_card, height=4, fg_color="transparent").pack()
+
+        popup.update_idletasks()
+        target_h = min(620, popup.winfo_screenheight() - 140)
+        x = self.winfo_rootx() + (self.winfo_width() // 2) - (620 // 2)
+        y = self.winfo_rooty() + (self.winfo_height() // 2) - (target_h // 2)
+        popup.geometry(f"620x{target_h}+{max(0, x)}+{max(0, y)}")
 
     def draw_step_bar(self):
         sb_frame = ctk.CTkFrame(self, fg_color="transparent", height=40)
