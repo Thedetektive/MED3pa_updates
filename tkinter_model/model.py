@@ -740,14 +740,17 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
 
         tree_card = ctk.CTkFrame(split_frame, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         tree_card.grid(row=0, column=2, padx=(0, 0), sticky="nsew")
-        ctk.CTkLabel(tree_card, text="🌿 APC Hierarchical Decision Tree (Fades when DR drops)", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
+        tree_header = ctk.CTkFrame(tree_card, fg_color="transparent")
+        tree_header.pack(fill="x", padx=15, pady=10)
+        ctk.CTkLabel(tree_header, text="🌿 APC Hierarchical Decision Tree (Fades when DR drops)", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(side="left")
+        ctk.CTkButton(tree_header, text="⤢", command=self.toggle_fullscreen_tree, width=28, height=28, font=ctk.CTkFont(size=16), fg_color="#F1F3F5", hover_color="#E2E6EA", text_color="#185FA5").pack(side="right")
 
         self.tree_metric_families = {
-            "Confidence": ["APC Confidence"],
+            "Confidence": ["APC Confidence",],
             "Base-model": ["AUC", "Sensitivity", "Specificity", "NPV", "PPV"],
         }
         self.tree_metric_cmaps = {
-            "APC Confidence": cm.RdYlGn,
+            "APC Confidence": cm.RdYlGn, 
             "AUC": cm.PuBu, "Sensitivity": cm.PuBu, "Specificity": cm.PuBu, "NPV": cm.PuBu, "PPV": cm.PuBu,
         }
         self.tree_total = 4476
@@ -795,6 +798,11 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             font=ctk.CTkFont(size=11),
         )
         self.tree_density_combo.pack(side="left")
+        self.tree_density_combos = [self.tree_density_combo]
+        self.fs_window = None
+        self.fs_canvas_tree = None
+        self.fs_cbar = None
+        self.fs_combo = None
         ctk.CTkLabel(tree_card, text="Tip: click a node for full per-node metrics", font=ctk.CTkFont(size=10), text_color="#6C757D").pack(anchor="w", padx=15, pady=(0, 2))
 
         self.fig_tree, self.ax_tree = plt.subplots(figsize=(4.5, 2.8), dpi=100)
@@ -1282,22 +1290,14 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             "node_b2": self.current_dr >= 92.0,
         }
 
-    def draw_tree(self):
+    def _render_tree(self, ax, fig, node_size):
         import matplotlib.colors as mcolors
-        if hasattr(self, 'cbar') and self.cbar is not None:
-            try:
-                self.cbar.remove()
-            except Exception:
-                pass
-        self.cbar = None
-        self.ax_tree.set_subplotspec(plt.GridSpec(1, 1)[0, 0])
-        self.ax_tree.set_position(self.ax_tree.get_subplotspec().get_position(self.fig_tree))
-        self.ax_tree.clear()
-        self.fig_tree.patch.set_facecolor('#FFFFFF')
-        self.ax_tree.set_facecolor('#FFFFFF')
-        self.ax_tree.axis('off')
-        self.ax_tree.set_xlim(0, 100)
-        self.ax_tree.set_ylim(0, 100)
+        ax.clear()
+        fig.patch.set_facecolor('#FFFFFF')
+        ax.set_facecolor('#FFFFFF')
+        ax.axis('off')
+        ax.set_xlim(0, 100)
+        ax.set_ylim(0, 100)
 
         metric_name = self.tree_density_var.get()
         cmap = self.tree_metric_cmaps[metric_name]
@@ -1315,7 +1315,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             return dict(boxstyle="round,pad=0.4", facecolor=face, edgecolor=edge, lw=1.2), txt
 
         for nid, xy, xytext in self.tree_edges:
-            self.ax_tree.annotate("", xy=xy, xytext=xytext, arrowprops=arrow_style)
+            ax.annotate("", xy=xy, xytext=xytext, arrowprops=arrow_style)
 
         visibility = self._tree_visibility()
         for nid, node in self.tree_node_data.items():
@@ -1327,32 +1327,122 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
                     box = dict(box)
                     box["lw"] = 3.0
                     box["edgecolor"] = "#212529"
-                size = 8 if hn == nid else 7
+                size = node_size + 1 if hn == nid else node_size
                 label = f"{node['title']}\n{node['rule']}\n{metric_name}: {value:.2f}"
-                self.ax_tree.text(cx, cy, label, ha='center', va='center', size=size, color=txt, bbox=box)
+                ax.text(cx, cy, label, ha='center', va='center', size=size, color=txt, bbox=box)
             else:
-                self.ax_tree.text(cx, cy, f"{node['title']}\n{node['rule']}\n(faded)", ha='center', va='center', size=7, bbox=box_grey, alpha=0.2)
+                ax.text(cx, cy, f"{node['title']}\n{node['rule']}\n(faded)", ha='center', va='center', size=node_size, bbox=box_grey, alpha=0.2)
 
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=1))
         sm.set_array([])
+        cbar = plt.colorbar(sm, ax=ax, shrink=0.6)
+        cbar.set_label(metric_name, fontsize=8)
+        cbar.ax.tick_params(labelsize=7)
+        cbar.outline.set_edgecolor('#E9ECEF')
+        return cbar
 
-        self.cbar = plt.colorbar(sm, ax=self.ax_tree, shrink=0.6)
-
-        self.cbar.set_label(metric_name, fontsize=8)
-        self.cbar.ax.tick_params(labelsize=7)
-        self.cbar.outline.set_edgecolor('#E9ECEF')
-
+    def draw_tree(self):
+        if hasattr(self, 'cbar') and self.cbar is not None:
+            try:
+                self.cbar.remove()
+            except Exception:
+                pass
+        self.cbar = None
+        self.ax_tree.set_subplotspec(plt.GridSpec(1, 1)[0, 0])
+        self.ax_tree.set_position(self.ax_tree.get_subplotspec().get_position(self.fig_tree))
+        self.cbar = self._render_tree(self.ax_tree, self.fig_tree, 7)
         self.fig_tree.tight_layout()
         self.canvas_tree.draw()
+        if self.fs_window is not None and self.fs_canvas_tree is not None:
+            self.refresh_fullscreen_tree()
+
+    def refresh_fullscreen_tree(self):
+        if self.fs_cbar is not None:
+            try:
+                self.fs_cbar.remove()
+            except Exception:
+                pass
+        self.fs_cbar = None
+        self.fs_ax_tree.set_subplotspec(plt.GridSpec(1, 1)[0, 0])
+        self.fs_ax_tree.set_position(self.fs_ax_tree.get_subplotspec().get_position(self.fs_fig_tree))
+        self.fs_cbar = self._render_tree(self.fs_ax_tree, self.fs_fig_tree, 12)
+        self.fs_fig_tree.tight_layout()
+        self.fs_canvas_tree.draw()
+
+    def toggle_fullscreen_tree(self):
+        if self.fs_window is not None and self.fs_window.winfo_exists():
+            self.fs_window.lift()
+            self.fs_window.focus_force()
+            return
+
+        win = ctk.CTkToplevel(self)
+        self.fs_window = win
+        win.title("APC Decision Tree — Expanded")
+        sw, sh = win.winfo_screenwidth(), win.winfo_screenheight()
+        win.geometry(f"{sw}x{sh}+0+0")
+        win.transient(self)
+        try:
+            win.state('zoomed')
+        except Exception:
+            pass
+        win.bind("<Escape>", lambda e: self.close_fullscreen_tree())
+        win.protocol("WM_DELETE_WINDOW", self.close_fullscreen_tree)
+
+        topbar = ctk.CTkFrame(win, fg_color="#FFFFFF", height=54)
+        topbar.pack(fill="x")
+        topbar.pack_propagate(False)
+        ctk.CTkLabel(topbar, text="🌿 APC Hierarchical Decision Tree", font=ctk.CTkFont(size=15, weight="bold"), text_color="#185FA5").pack(side="left", padx=16)
+        ctk.CTkButton(topbar, text="✕  Close", command=self.close_fullscreen_tree, width=90, fg_color="#185FA5", hover_color="#124A80").pack(side="right", padx=16, pady=10)
+        ctk.CTkSegmentedButton(topbar, values=list(self.tree_metric_families.keys()), variable=self.tree_family_var, command=self.on_tree_family_selected, font=ctk.CTkFont(size=11), height=26).pack(side="left", padx=(24, 8))
+        ctk.CTkLabel(topbar, text="Color by", font=ctk.CTkFont(size=11), text_color="#6C757D").pack(side="left", padx=(0, 6))
+        self.fs_combo = ctk.CTkComboBox(topbar, values=self.tree_metric_families[self.tree_family_var.get()], variable=self.tree_density_var, command=lambda _v: self.draw_tree(), width=160, height=26, font=ctk.CTkFont(size=11))
+        self.fs_combo.pack(side="left")
+        self.tree_density_combos.append(self.fs_combo)
+        ctk.CTkLabel(topbar, text="Tip: click a node for full per-node metrics", font=ctk.CTkFont(size=10), text_color="#6C757D").pack(side="left", padx=16)
+
+        self.fs_fig_tree, self.fs_ax_tree = plt.subplots(figsize=(12, 7), dpi=100)
+        self.fs_cbar = None
+        self.fs_canvas_tree = FigureCanvasTkAgg(self.fs_fig_tree, master=win)
+        self.fs_canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=14, pady=14)
+        self.fs_fig_tree.canvas.mpl_connect("button_press_event", self._on_tree_click_fs)
+        self.refresh_fullscreen_tree()
+
+    def close_fullscreen_tree(self):
+        self.tree_density_combos = [c for c in self.tree_density_combos if c is not self.fs_combo]
+        self.fs_combo = None
+        if self.fs_canvas_tree is not None:
+            try:
+                plt.close(self.fs_fig_tree)
+            except Exception:
+                pass
+        self.fs_canvas_tree = None
+        self.fs_cbar = None
+        if self.fs_window is not None:
+            try:
+                self.fs_window.destroy()
+            except Exception:
+                pass
+        self.fs_window = None
 
     def on_tree_family_selected(self, family):
         metrics = self.tree_metric_families[family]
-        self.tree_density_combo.configure(values=metrics)
+        for combo in list(self.tree_density_combos):
+            try:
+                if combo.winfo_exists():
+                    combo.configure(values=metrics)
+            except Exception:
+                pass
         self.tree_density_var.set(metrics[0])
         self.draw_tree()
 
     def _on_tree_click(self, event):
-        if event.inaxes != self.ax_tree or event.xdata is None:
+        self._tree_click_on(event, self.ax_tree, None)
+
+    def _on_tree_click_fs(self, event):
+        self._tree_click_on(event, self.fs_ax_tree, self.fs_window)
+
+    def _tree_click_on(self, event, ax, parent):
+        if event.inaxes != ax or event.xdata is None:
             return
         visibility = self._tree_visibility()
         best, best_d = None, float('inf')
@@ -1364,16 +1454,17 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             if d < best_d:
                 best_d, best = d, nid
         if best is not None and best_d < 12:
-            self.open_node_popup(best)
+            self.open_node_popup(best, parent)
 
-    def open_node_popup(self, nid):
+    def open_node_popup(self, nid, parent=None):
         node = self.tree_node_data[nid]
         conf_color = {"High": "#0F6E56", "Mod": "#BA7517", "Low": "#993C1D"}.get(node["conf"], "#185FA5")
 
-        popup = ctk.CTkToplevel(self)
+        master = parent if parent is not None and parent.winfo_exists() else self
+        popup = ctk.CTkToplevel(master)
         popup.title(f"{node['title']} · {node['rule']}")
         popup.resizable(False, False)
-        popup.transient(self)
+        popup.transient(master)
         popup.grab_set()
 
         header = ctk.CTkFrame(popup, fg_color=conf_color, corner_radius=0, height=60)
@@ -1425,8 +1516,8 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
 
         popup.update_idletasks()
         target_h = min(620, popup.winfo_screenheight() - 140)
-        x = self.winfo_rootx() + (self.winfo_width() // 2) - (620 // 2)
-        y = self.winfo_rooty() + (self.winfo_height() // 2) - (target_h // 2)
+        x = master.winfo_rootx() + (master.winfo_width() // 2) - (620 // 2)
+        y = master.winfo_rooty() + (master.winfo_height() // 2) - (target_h // 2)
         popup.geometry(f"620x{target_h}+{max(0, x)}+{max(0, y)}")
 
     def draw_step_bar(self):
