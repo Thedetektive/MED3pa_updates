@@ -743,25 +743,25 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         ctk.CTkLabel(tree_card, text="🌿 APC Hierarchical Decision Tree (Fades when DR drops)", font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=10)
 
         self.tree_metric_families = {
-            "Confidence": ["APC Confidence", "IPC Confidence", "MPC Confidence"],
+            "Confidence": ["APC Confidence"],
             "Base-model": ["AUC", "Sensitivity", "Specificity", "NPV", "PPV"],
         }
         self.tree_metric_cmaps = {
-            "APC Confidence": cm.RdYlGn, "IPC Confidence": cm.RdYlGn, "MPC Confidence": cm.RdYlGn,
+            "APC Confidence": cm.RdYlGn,
             "AUC": cm.PuBu, "Sensitivity": cm.PuBu, "Specificity": cm.PuBu, "NPV": cm.PuBu, "PPV": cm.PuBu,
         }
         self.tree_total = 4476
         self.tree_node_data = {
             "root":    {"title": "All Cohorts", "rule": "root", "center": (50, 88), "size": 4476, "cap": None, "conf": "—",
-                        "metrics": {"APC Confidence": 0.74, "IPC Confidence": 0.72, "MPC Confidence": 0.71, "AUC": 0.80, "Sensitivity": 0.81, "Specificity": 0.58, "NPV": 0.89, "PPV": 0.42}},
+                        "metrics": {"APC Confidence": 0.74, "AUC": 0.80, "Sensitivity": 0.81, "Specificity": 0.58, "NPV": 0.89, "PPV": 0.42}},
             "node_a":  {"title": "Node A", "rule": "BUN ≤ 25.5", "center": (25, 54), "size": 1240, "cap": 40, "conf": "High",
-                        "metrics": {"APC Confidence": 0.86, "IPC Confidence": 0.88, "MPC Confidence": 0.85, "AUC": 0.80, "Sensitivity": 0.47, "Specificity": 0.89, "NPV": 0.92, "PPV": 0.36}},
+                        "metrics": {"APC Confidence": 0.86, "AUC": 0.80, "Sensitivity": 0.47, "Specificity": 0.89, "NPV": 0.92, "PPV": 0.36}},
             "node_b":  {"title": "Node B", "rule": "BUN > 25.5", "center": (75, 54), "size": 3236, "cap": 60, "conf": "Mod",
-                        "metrics": {"APC Confidence": 0.61, "IPC Confidence": 0.63, "MPC Confidence": 0.60, "AUC": 0.71, "Sensitivity": 0.66, "Specificity": 0.65, "NPV": 0.45, "PPV": 0.66}},
+                        "metrics": {"APC Confidence": 0.61, "AUC": 0.71, "Sensitivity": 0.66, "Specificity": 0.65, "NPV": 0.45, "PPV": 0.66}},
             "node_b1": {"title": "Node B1", "rule": "GCS ≥ 10", "center": (60, 18), "size": 2145, "cap": 22, "conf": "Mod",
-                        "metrics": {"APC Confidence": 0.58, "IPC Confidence": 0.60, "MPC Confidence": 0.57, "AUC": 0.74, "Sensitivity": 0.62, "Specificity": 0.80, "NPV": 0.85, "PPV": 0.40}},
+                        "metrics": {"APC Confidence": 0.58, "AUC": 0.74, "Sensitivity": 0.62, "Specificity": 0.80, "NPV": 0.85, "PPV": 0.40}},
             "node_b2": {"title": "Node B2", "rule": "GCS < 7.5", "center": (90, 18), "size": 1091, "cap": 8, "conf": "Low",
-                        "metrics": {"APC Confidence": 0.34, "IPC Confidence": 0.37, "MPC Confidence": 0.33, "AUC": 0.70, "Sensitivity": 0.69, "Specificity": 0.59, "NPV": 0.79, "PPV": 0.45}},
+                        "metrics": {"APC Confidence": 0.34, "AUC": 0.70, "Sensitivity": 0.69, "Specificity": 0.59, "NPV": 0.79, "PPV": 0.45}},
         }
         self.tree_edges = [
             ("node_a", (25, 65), (45, 80)),
