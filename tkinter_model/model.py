@@ -812,6 +812,8 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
 
         self.fs_window = None
         self.fs_canvas_tree = None
+        self.fs_ax_tree = None
+        self._fs_pan = {"active": False, "px": 0, "py": 0, "xlim": None, "ylim": None, "moved": False}
         self.fs_cbar = None
         self.fs_combo = None
         ctk.CTkLabel(tree_card, text="Tip: click a node for full per-node metrics", font=ctk.CTkFont(size=10), text_color="#6C757D").pack(anchor="w", padx=15, pady=(0, 2))
@@ -1405,6 +1407,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         topbar.pack_propagate(False)
         ctk.CTkLabel(topbar, text="🌿 APC Hierarchical Decision Tree", font=ctk.CTkFont(size=15, weight="bold"), text_color="#185FA5").pack(side="left", padx=16)
         ctk.CTkButton(topbar, text="✕  Close", command=self.close_fullscreen_tree, width=90, fg_color="#185FA5", hover_color="#124A80").pack(side="right", padx=16, pady=10)
+        ctk.CTkButton(topbar, text="⟲  Reset view", command=self.reset_fullscreen_view, width=110, fg_color="#F1F3F5", hover_color="#E2E6EA", text_color="#185FA5").pack(side="right", padx=(0, 4), pady=10)
         ctk.CTkSegmentedButton(topbar, values=list(self.tree_metric_families.keys()), variable=self.tree_family_var, command=self.on_tree_family_selected, font=ctk.CTkFont(size=11), height=26).pack(side="left", padx=(24, 8))
         ctk.CTkLabel(topbar, text="Color by", font=ctk.CTkFont(size=11), text_color="#6C757D").pack(side="left", padx=(0, 6))
         self.fs_combo = ctk.CTkComboBox(topbar, values=self.tree_metric_families[self.tree_family_var.get()], variable=self.tree_density_var, command=lambda _v: self.draw_tree(), width=160, height=26, font=ctk.CTkFont(size=11))
@@ -1416,7 +1419,12 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         self.fs_cbar = None
         self.fs_canvas_tree = FigureCanvasTkAgg(self.fs_fig_tree, master=win)
         self.fs_canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=14, pady=14)
-        self.fs_fig_tree.canvas.mpl_connect("button_press_event", self._on_tree_click_fs)
+        self._fs_pan = {"active": False, "px": 0, "py": 0, "xlim": None, "ylim": None, "moved": False}
+        cv = self.fs_fig_tree.canvas
+        cv.mpl_connect("scroll_event", self._on_fs_scroll)
+        cv.mpl_connect("button_press_event", self._on_fs_press)
+        cv.mpl_connect("motion_notify_event", self._on_fs_motion)
+        cv.mpl_connect("button_release_event", self._on_fs_release)
         self.refresh_fullscreen_tree()
 
     def close_fullscreen_tree(self):
@@ -1428,6 +1436,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
             except Exception:
                 pass
         self.fs_canvas_tree = None
+        self.fs_ax_tree = None
         self.fs_cbar = None
         if self.fs_window is not None:
             try:
@@ -1452,6 +1461,56 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
 
     def _on_tree_click_fs(self, event):
         self._tree_click_on(event, self.fs_ax_tree, self.fs_window)
+
+    def _on_fs_scroll(self, event):
+        ax = self.fs_ax_tree
+        if event.inaxes != ax or event.xdata is None:
+            return
+        scale = 0.85 if event.button == "up" else 1 / 0.85
+        x0, x1 = ax.get_xlim()
+        y0, y1 = ax.get_ylim()
+        new_w = max(6, min(220, (x1 - x0) * scale))
+        new_h = max(6, min(220, (y1 - y0) * scale))
+        relx = (event.xdata - x0) / (x1 - x0)
+        rely = (event.ydata - y0) / (y1 - y0)
+        ax.set_xlim(event.xdata - new_w * relx, event.xdata + new_w * (1 - relx))
+        ax.set_ylim(event.ydata - new_h * rely, event.ydata + new_h * (1 - rely))
+        self.fs_canvas_tree.draw_idle()
+
+    def _on_fs_press(self, event):
+        if event.button != 1 or event.inaxes != self.fs_ax_tree or event.x is None:
+            return
+        self._fs_pan.update(active=True, px=event.x, py=event.y,
+                            xlim=self.fs_ax_tree.get_xlim(), ylim=self.fs_ax_tree.get_ylim(), moved=False)
+
+    def _on_fs_motion(self, event):
+        if not self._fs_pan["active"] or event.x is None:
+            return
+        ax = self.fs_ax_tree
+        bbox = ax.get_window_extent()
+        dx_px = event.x - self._fs_pan["px"]
+        dy_px = event.y - self._fs_pan["py"]
+        if abs(dx_px) > 3 or abs(dy_px) > 3:
+            self._fs_pan["moved"] = True
+        x0, x1 = self._fs_pan["xlim"]
+        y0, y1 = self._fs_pan["ylim"]
+        dx = dx_px * (x1 - x0) / bbox.width
+        dy = dy_px * (y1 - y0) / bbox.height
+        ax.set_xlim(x0 - dx, x1 - dx)
+        ax.set_ylim(y0 - dy, y1 - dy)
+        self.fs_canvas_tree.draw_idle()
+
+    def _on_fs_release(self, event):
+        was_active = self._fs_pan["active"]
+        self._fs_pan["active"] = False
+        if was_active and not self._fs_pan["moved"]:
+            self._tree_click_on(event, self.fs_ax_tree, self.fs_window)
+
+    def reset_fullscreen_view(self):
+        if self.fs_ax_tree is not None:
+            self.fs_ax_tree.set_xlim(0, 100)
+            self.fs_ax_tree.set_ylim(0, 100)
+            self.fs_canvas_tree.draw_idle()
 
     def _tree_click_on(self, event, ax, parent):
         if event.inaxes != ax or event.xdata is None:
