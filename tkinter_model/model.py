@@ -2252,11 +2252,26 @@ class PatientDetailView(ctk.CTkScrollableFrame):
         tree_card.pack(fill="x", pady=(0, 16))
         ctk.CTkLabel(tree_card, text="🌿 APC Profile Tree — patient's profile highlighted",
                      font=ctk.CTkFont(size=13, weight="bold"), text_color="#185FA5").pack(anchor="w", padx=15, pady=(12, 0))
-        ctk.CTkLabel(tree_card, text="The highlighted leaf is the smallest profile containing this patient; its APC value is the profile-level confidence.",
-                     font=ctk.CTkFont(size=11), text_color="#6C757D").pack(anchor="w", padx=15, pady=(0, 4))
-        self.fig_tree, self.ax_tree = plt.subplots(figsize=(7.4, 3.0), dpi=100)
-        self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_card)
-        self.canvas_tree.get_tk_widget().pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        ctk.CTkLabel(tree_card, text="The MDR curve (left) marks the chosen DR and where this patient's confidence falls; the highlighted leaf (right) is the smallest profile containing this patient.",
+                     font=ctk.CTkFont(size=11), text_color="#6C757D", wraplength=900, justify="left").pack(anchor="w", padx=15, pady=(0, 4))
+
+        chart_row = ctk.CTkFrame(tree_card, fg_color="transparent")
+        chart_row.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        chart_row.grid_columnconfigure(0, weight=4, uniform="pd_charts")
+        chart_row.grid_columnconfigure(1, weight=6, uniform="pd_charts")
+        chart_row.grid_rowconfigure(0, weight=1)
+
+        mdr_holder = ctk.CTkFrame(chart_row, fg_color="transparent")
+        mdr_holder.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        self.fig_mdr, self.ax_mdr = plt.subplots(figsize=(4.0, 3.0), dpi=100)
+        self.canvas_mdr = FigureCanvasTkAgg(self.fig_mdr, master=mdr_holder)
+        self.canvas_mdr.get_tk_widget().pack(fill="both", expand=True)
+
+        tree_holder = ctk.CTkFrame(chart_row, fg_color="transparent")
+        tree_holder.grid(row=0, column=1, sticky="nsew")
+        self.fig_tree, self.ax_tree = plt.subplots(figsize=(5.2, 3.0), dpi=100)
+        self.canvas_tree = FigureCanvasTkAgg(self.fig_tree, master=tree_holder)
+        self.canvas_tree.get_tk_widget().pack(fill="both", expand=True)
 
         data_card = ctk.CTkFrame(self, fg_color="#FFFFFF", border_color="#E9ECEF", border_width=1, corner_radius=8)
         data_card.pack(fill="x", pady=(0, 20))
@@ -2380,6 +2395,7 @@ class PatientDetailView(ctk.CTkScrollableFrame):
         self._render_conf_bars(d)
         self._render_risk(d)
         self._render_data(data)
+        self.draw_mdr(d)
         self.draw_tree(d["leaf"])
 
     def _render_conf_bars(self, d):
@@ -2449,6 +2465,44 @@ class PatientDetailView(ctk.CTkScrollableFrame):
                 label = key.replace("_", " ").title()
                 ctk.CTkLabel(cell, text=label, font=ctk.CTkFont(size=10), text_color="#6C757D").pack(anchor="w", padx=8, pady=(6, 0))
                 ctk.CTkLabel(cell, text=str(data.get(key)), font=ctk.CTkFont(size=13, weight="bold"), text_color="#212529").pack(anchor="w", padx=8, pady=(0, 6))
+
+    def draw_mdr(self, d):
+        self.ax_mdr.clear()
+        self.fig_mdr.patch.set_facecolor('#FFFFFF')
+        self.ax_mdr.set_facecolor('#FFFFFF')
+
+        dr_vals = [50, 60, 70, 75, 80, 85, 90, 93, 95, 97, 100]
+        auc = [0.60, 0.65, 0.71, 0.74, 0.76, 0.78, 0.79, 0.80, 0.78, 0.77, 0.76]
+        sens = [0.48, 0.55, 0.63, 0.67, 0.70, 0.74, 0.76, 0.78, 0.73, 0.70, 0.68]
+        spec = [0.98, 0.96, 0.92, 0.89, 0.86, 0.82, 0.78, 0.76, 0.75, 0.75, 0.74]
+        npv = [0.98, 0.97, 0.95, 0.94, 0.93, 0.92, 0.90, 0.89, 0.87, 0.86, 0.85]
+
+        self.ax_mdr.plot(dr_vals, auc, color='#378ADD', label='AUC', linewidth=2)
+        self.ax_mdr.plot(dr_vals, sens, color='#1D9E75', label='Sensitivity', linewidth=2)
+        self.ax_mdr.plot(dr_vals, spec, color='#BA7517', label='Specificity', linewidth=1.5, linestyle='--')
+        self.ax_mdr.plot(dr_vals, npv, color='#D85A30', label='NPV', linewidth=1.5, linestyle='--')
+
+        chosen_dr = float(self.dr_threshold)
+        patient_dr = max(50.0, min(100.0, (d["mpc"] - 0.30) / 0.55 * 100.0))
+        self.ax_mdr.axvline(x=chosen_dr, color="#185FA5", linestyle=":", linewidth=2, label=f"Chosen DR ({int(chosen_dr)}%)")
+        self.ax_mdr.axvline(x=patient_dr, color="#8E5BB5", linestyle="-", linewidth=2, label="Patient confidence")
+
+        self.ax_mdr.text(chosen_dr, 0.405, "DR", rotation=90, va='bottom', ha='right', fontsize=7, color="#185FA5", weight='bold')
+        self.ax_mdr.text(patient_dr, 0.405, "patient", rotation=90, va='bottom', ha='right', fontsize=7, color="#8E5BB5", weight='bold')
+
+        self.ax_mdr.set_xlim(50, 100)
+        self.ax_mdr.set_ylim(0.4, 1.0)
+        self.ax_mdr.set_yticks([0.4, 0.6, 0.8, 1.0])
+        self.ax_mdr.set_xticks([50, 60, 70, 80, 90, 100])
+        self.ax_mdr.set_xticklabels(["50%", "60%", "70%", "80%", "90%", "100%"])
+        self.ax_mdr.set_xlabel("Declaration rate", fontsize=8, color='#6C757D')
+        self.ax_mdr.tick_params(axis='both', which='major', labelsize=8, colors='#888780')
+        self.ax_mdr.grid(True, color='#888780', alpha=0.15, linestyle='-')
+        for spine in ['top', 'right']:
+            self.ax_mdr.spines[spine].set_visible(False)
+        self.ax_mdr.legend(loc='lower left', bbox_to_anchor=(0, 1.01), ncol=2, frameon=False, fontsize=6.5)
+        self.fig_mdr.tight_layout()
+        self.canvas_mdr.draw()
 
     def draw_tree(self, leaf):
         if hasattr(self, 'cbar') and self.cbar is not None:
