@@ -1472,6 +1472,17 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         node = self.tree_node_data[nid]
         conf_color = {"High": "#0F6E56", "Mod": "#BA7517", "Low": "#993C1D"}.get(node["conf"], "#185FA5")
 
+        node_parents = {"node_a": "root", "node_b": "root", "node_b1": "node_b", "node_b2": "node_b"}
+        rule_chain = []
+        cur = nid
+        while cur is not None:
+            r = self.tree_node_data[cur]["rule"]
+            if r and r != "root":
+                rule_chain.append(r)
+            cur = node_parents.get(cur)
+        rule_chain.reverse()
+        rule_text = "   →   ".join(rule_chain) if rule_chain else "All cohorts (root)"
+
         master = parent if parent is not None and parent.winfo_exists() else self
         popup = ctk.CTkToplevel(master)
         popup.title(f"{node['title']} · {node['rule']}")
@@ -1483,7 +1494,7 @@ class ResultsReviewView(ctk.CTkScrollableFrame):
         header.pack(fill="x")
         header.pack_propagate(False)
         ctk.CTkLabel(header, text=node["title"], font=ctk.CTkFont(size=16, weight="bold"), text_color="#FFFFFF").pack(anchor="w", padx=18, pady=(9, 0))
-        ctk.CTkLabel(header, text=f"Split rule:  {node['rule']}", font=ctk.CTkFont(size=12), text_color="#FFFFFF").pack(anchor="w", padx=18)
+        ctk.CTkLabel(header, text=f"Split rule:  {rule_text}", font=ctk.CTkFont(size=12), text_color="#FFFFFF").pack(anchor="w", padx=18)
 
         ctk.CTkButton(popup, text="Close", command=popup.destroy, width=120, fg_color="#185FA5", hover_color="#124A80").pack(side="bottom", pady=(6, 12))
 
@@ -2022,8 +2033,8 @@ class LookupView(ctk.CTkScrollableFrame):
         header.pack(fill="x", padx=20, pady=(20, 4))
         ctk.CTkLabel(header, text=patient_id, font=ctk.CTkFont(size=20, weight="bold"),
                      text_color="#212529").pack(side="left")
-        ctk.CTkLabel(header, text=f"Admitted: {data.get('admitted', '—')}",
-                     font=ctk.CTkFont(size=12), text_color="#6C757D").pack(side="right")
+        # ctk.CTkLabel(header, text=f"Admitted: {data.get('admitted', '—')}",
+        #              font=ctk.CTkFont(size=12), text_color="#6C757D").pack(side="right")
 
         details = ctk.CTkFrame(result_card, fg_color="transparent")
         details.pack(fill="x", padx=20, pady=(0, 8))
@@ -2268,7 +2279,7 @@ class PatientDetailView(ctk.CTkScrollableFrame):
         d = self._derive(data)
 
         self.title_lbl.configure(text=patient_id)
-        self.subtitle_lbl.configure(text=f"Admitted: {data.get('admitted', '—')}  ·  Profile: {data.get('profile', '—')}")
+        # self.subtitle_lbl.configure(text=f"Admitted: {data.get('admitted', '—')}  ·  Profile: {data.get('profile', '—')}")
 
         rec_kind, rec_title, rec_sub = d["rec"]
         palette = {
